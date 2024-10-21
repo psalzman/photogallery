@@ -114,7 +114,8 @@ function AdminDashboard() {
       });
       setPhotos(response.data.photos.map(photo => ({
         ...photo,
-        url: `http://localhost:5001/photo-uploads/${accessCode}/${photo.filename}`
+        thumbnailUrl: `http://localhost:5001/photo-uploads/${accessCode}/${photo.thumbnail_filename}`,
+        fullUrl: `http://localhost:5001/photo-uploads/${accessCode}/${photo.filename}`
       })));
     } catch (err) {
       setError('Failed to fetch viewer photos. Please try again.');
@@ -303,19 +304,14 @@ function AdminDashboard() {
       const token = localStorage.getItem('token');
       const formData = new FormData();
       selectedFiles.forEach((file, index) => {
-        formData.append('photos', file);
+        formData.append(`photos`, file);
       });
       formData.append('accessCode', selectedAccessCode);
 
       console.log('Sending accessCode:', selectedAccessCode);
       console.log('Number of files:', selectedFiles.length);
 
-      // Log the FormData contents
-      for (let [key, value] of formData.entries()) {
-        console.log(key, value);
-      }
-
-      const response = await axios.post(`http://localhost:5001/api/photos/upload?accessCode=${selectedAccessCode}`, formData, {
+      const response = await axios.post('http://localhost:5001/api/photos/upload', formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -337,11 +333,6 @@ function AdminDashboard() {
       }
     } catch (err) {
       console.error('Error uploading photos:', err);
-      if (err.response) {
-        console.error('Response data:', err.response.data);
-        console.error('Response status:', err.response.status);
-        console.error('Response headers:', err.response.headers);
-      }
       if (err.response && err.response.data && err.response.data.error) {
         setError(err.response.data.error);
       } else {
@@ -592,12 +583,19 @@ function AdminDashboard() {
         <div style={styles.photoGrid}>
           {photos.map(photo => (
             <div key={photo.id} style={styles.photoContainer}>
-              <img 
-                src={photo.url} 
-                alt={photo.filename} 
-                style={styles.photo} 
-                onClick={() => openModal(photo)}
-              />
+              <div style={styles.photoWrapper}>
+                <img 
+                  src={photo.thumbnailUrl} 
+                  alt={photo.filename} 
+                  style={styles.photo} 
+                  onClick={() => openModal(photo)}
+                />
+                {photo.selected_for_printing === 1 && (
+                  <div style={styles.selectedOverlay}>
+                    <span style={styles.checkmark}>✓</span>
+                  </div>
+                )}
+              </div>
               <button onClick={() => handleDeletePhoto(photo.id)} style={styles.deleteButton}>Delete</button>
             </div>
           ))}
@@ -646,7 +644,7 @@ function AdminDashboard() {
       {selectedPhoto && (
         <div style={styles.modal} onClick={closeModal}>
           <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
-            <img src={selectedPhoto.url} alt={selectedPhoto.filename} style={styles.modalImage} />
+            <img src={selectedPhoto.fullUrl} alt={selectedPhoto.filename} style={styles.modalImage} />
             <button onClick={closeModal} style={styles.closeButton}>Close</button>
           </div>
         </div>
@@ -773,12 +771,34 @@ const styles = {
     flexDirection: 'column',
     alignItems: 'center',
   },
-  photo: {
+  photoWrapper: {
+    position: 'relative',
     width: '100%',
     height: '200px',
+  },
+  photo: {
+    width: '100%',
+    height: '100%',
     objectFit: 'cover',
     borderRadius: '4px',
     cursor: 'pointer',
+  },
+  selectedOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: '4px',
+  },
+  checkmark: {
+    color: '#4CAF50',
+    fontSize: '48px',
+    fontWeight: 'bold',
   },
   deleteButton: {
     marginTop: '10px',
@@ -806,10 +826,13 @@ const styles = {
     padding: '20px',
     borderRadius: '8px',
     position: 'relative',
+    maxWidth: '90%',
+    maxHeight: '90%',
+    overflow: 'auto',
   },
   modalImage: {
-    maxWidth: '90vw',
-    maxHeight: '80vh',
+    maxWidth: '100%',
+    maxHeight: '70vh',
     objectFit: 'contain',
   },
   closeButton: {

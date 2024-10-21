@@ -1,107 +1,90 @@
 import React, { useState } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 function Login() {
   const [accessCode, setAccessCode] = useState('');
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setIsLoading(true);
 
     try {
       const response = await axios.post('http://localhost:5001/api/auth/login', { accessCode });
-      const { token, role, email: userEmail } = response.data;
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('userRole', response.data.userRole);
+      localStorage.setItem('userEmail', response.data.userEmail);
 
-      // Store the token, role, and email in localStorage
-      localStorage.setItem('token', token);
-      localStorage.setItem('userRole', role);
-      localStorage.setItem('userEmail', userEmail);
-
-      // Redirect based on role
-      if (role === 'admin') {
+      if (response.data.userRole === 'admin') {
         navigate('/admin');
       } else {
-        // Navigate to the gallery with the email
-        navigate(`/gallery/${userEmail}`);
+        navigate('/gallery');
       }
     } catch (err) {
-      if (err.response && err.response.data && err.response.data.error) {
-        setError(err.response.data.error);
-      } else {
-        setError('An unexpected error occurred. Please try again.');
-      }
-    } finally {
-      setIsLoading(false);
+      setError('Invalid access code. Please try again.');
+      console.error('Login error:', err);
     }
   };
 
   return (
     <div style={styles.container}>
-      <form onSubmit={handleLogin} style={styles.form}>
-        <h2 style={styles.title}>PhotoSelect Login</h2>
-        {error && <p style={styles.error}>{error}</p>}
+      <h1 style={styles.title}>Login</h1>
+      {error && <p style={styles.error}>{error}</p>}
+      <form onSubmit={handleSubmit} style={styles.form}>
         <input
           type="text"
-          placeholder="Enter Access Code"
           value={accessCode}
           onChange={(e) => setAccessCode(e.target.value)}
+          placeholder="Enter access code"
           style={styles.input}
           required
         />
-        <button type="submit" style={styles.button} disabled={isLoading}>
-          {isLoading ? 'Logging in...' : 'Login'}
-        </button>
+        <button type="submit" style={styles.button}>Login</button>
       </form>
     </div>
   );
 }
 
-// Basic styling with darker colors
 const styles = {
   container: {
     display: 'flex',
-    height: '100vh',
-    backgroundColor: '#2c2c2c',
-    justifyContent: 'center',
+    flexDirection: 'column',
     alignItems: 'center',
-  },
-  form: {
-    backgroundColor: '#3c3c3c',
-    padding: '40px',
-    borderRadius: '8px',
-    boxShadow: '0 0 10px rgba(0, 0, 0, 0.3)',
-    textAlign: 'center',
+    justifyContent: 'center',
+    height: '100vh',
+    backgroundColor: '#1e1e1e',
+    color: '#ffffff',
   },
   title: {
-    color: '#ffffff',
     marginBottom: '20px',
   },
+  form: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+  },
   input: {
-    width: '80%',
     padding: '10px',
-    marginBottom: '20px',
+    marginBottom: '10px',
+    width: '200px',
+    backgroundColor: '#333333',
+    color: '#ffffff',
     border: 'none',
     borderRadius: '4px',
   },
   button: {
-    width: '85%',
-    padding: '10px',
-    backgroundColor: '#555555',
-    color: '#ffffff',
+    padding: '10px 20px',
+    backgroundColor: '#4CAF50',
+    color: 'white',
     border: 'none',
     borderRadius: '4px',
     cursor: 'pointer',
-    opacity: 1,
-    transition: 'opacity 0.3s',
   },
   error: {
     color: '#ff4d4d',
-    marginBottom: '15px',
+    marginBottom: '10px',
   },
 };
 

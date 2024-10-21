@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const sharp = require('sharp');
 const db = require('../database');
 const verifyToken = require('../middleware/verifyToken');
 
@@ -38,6 +39,13 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
+// Create thumbnail
+const createThumbnail = async (filePath, thumbnailPath) => {
+  await sharp(filePath)
+    .resize(500, 500, { fit: 'inside', withoutEnlargement: true })
+    .toFile(thumbnailPath);
+};
+
 // Upload photos
 router.post('/upload', verifyToken, (req, res) => {
   console.log('Upload route hit');
@@ -51,7 +59,7 @@ router.post('/upload', verifyToken, (req, res) => {
     return res.status(400).json({ error: 'Access code is required' });
   }
 
-  upload.array('photos', 100)(req, res, function (err) {
+  upload.array('photos', 100)(req, res, async function (err) {
     if (err) {
       console.error('Error uploading files:', err);
       return res.status(500).json({ error: 'Failed to upload files', message: err.message });
@@ -67,10 +75,14 @@ router.post('/upload', verifyToken, (req, res) => {
 
     console.log('Number of files uploaded:', uploadedFiles.length);
 
-    const insertPromises = uploadedFiles.map(file => {
+    const insertPromises = uploadedFiles.map(async (file) => {
+      const thumbnailFilename = `thumb_${file.filename}`;
+      const thumbnailPath = path.join(file.destination, thumbnailFilename);
+      await createThumbnail(file.path, thumbnailPath);
+
       return new Promise((resolve, reject) => {
-        db.run('INSERT INTO photos (filename, access_code) VALUES (?, ?)',
-          [file.filename, accessCode],
+        db.run('INSERT INTO photos (filename, thumbnail_filename, access_code) VALUES (?, ?, ?)',
+          [file.filename, thumbnailFilename, accessCode],
           function(err) {
             if (err) {
               console.error('Error inserting photo:', err);
@@ -83,15 +95,14 @@ router.post('/upload', verifyToken, (req, res) => {
       });
     });
 
-    Promise.all(insertPromises)
-      .then(() => {
-        console.log('All photos inserted into database');
-        res.status(201).json({ message: 'Photos uploaded successfully', count: uploadedFiles.length });
-      })
-      .catch(err => {
-        console.error('Error uploading photos:', err);
-        res.status(500).json({ error: 'Failed to upload photos' });
-      });
+    try {
+      await Promise.all(insertPromises);
+      console.log('All photos inserted into database');
+      res.status(201).json({ message: 'Photos uploaded successfully', count: uploadedFiles.length });
+    } catch (err) {
+      console.error('Error uploading photos:', err);
+      res.status(500).json({ error: 'Failed to upload photos' });
+    }
   });
 });
 
@@ -112,7 +123,7 @@ router.get('/:accessCode', verifyToken, (req, res) => {
 router.delete('/:id', verifyToken, (req, res) => {
   const photoId = req.params.id;
 
-  db.get('SELECT filename, access_code FROM photos WHERE id = ?', [photoId], (err, row) => {
+  db.get('SELECT filename, thumbnail_filename, access_code FROM photos WHERE id = ?', [photoId], (err, row) => {
     if (err) {
       console.error('Error fetching photo:', err);
       return res.status(500).json({ error: 'Failed to fetch photo information' });
@@ -123,6 +134,7 @@ router.delete('/:id', verifyToken, (req, res) => {
     }
 
     const filePath = path.join(__dirname, '..', 'photo-uploads', row.access_code, row.filename);
+    const thumbnailPath = path.join(__dirname, '..', 'photo-uploads', row.access_code, row.thumbnail_filename);
 
     fs.unlink(filePath, (unlinkErr) => {
       if (unlinkErr) {
@@ -130,13 +142,19 @@ router.delete('/:id', verifyToken, (req, res) => {
         return res.status(500).json({ error: 'Failed to delete photo file' });
       }
 
-      db.run('DELETE FROM photos WHERE id = ?', [photoId], function(deleteErr) {
-        if (deleteErr) {
-          console.error('Error deleting photo from database:', deleteErr);
-          return res.status(500).json({ error: 'Failed to delete photo from database' });
+      fs.unlink(thumbnailPath, (unlinkThumbErr) => {
+        if (unlinkThumbErr) {
+          console.error('Error deleting thumbnail:', unlinkThumbErr);
         }
 
-        res.json({ message: 'Photo deleted successfully' });
+        db.run('DELETE FROM photos WHERE id = ?', [photoId], function(deleteErr) {
+          if (deleteErr) {
+            console.error('Error deleting photo from database:', deleteErr);
+            return res.status(500).json({ error: 'Failed to delete photo from database' });
+          }
+
+          res.json({ message: 'Photo deleted successfully' });
+        });
       });
     });
   });
@@ -169,7 +187,14 @@ router.post('/:id/select-print', verifyToken, (req, res) => {
         return res.status(500).json({ error: 'Failed to select photo for printing' });
       }
 
-      res.status(201).json({ message: 'Photo selected for printing successfully', id: this.lastID });
+      db.run('UPDATE photos SET selected_for_printing = 1 WHERE id = ?', [photoId], function(updateErr) {
+        if (updateErr) {
+          console.error('Error updating photo selected_for_printing status:', updateErr);
+          return res.status(500).json({ error: 'Failed to update photo status' });
+        }
+
+        res.status(201).json({ message: 'Photo selected for printing successfully', id: this.lastID });
+      });
     });
   });
 });

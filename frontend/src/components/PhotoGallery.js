@@ -60,7 +60,8 @@ function PhotoGallery() {
       });
       const fetchedPhotos = response.data.photos.map(photo => ({
         ...photo,
-        url: `http://localhost:5001/photo-uploads/${accessCode}/${photo.filename}`
+        thumbnailUrl: `http://localhost:5001/photo-uploads/${accessCode}/${photo.thumbnail_filename}`,
+        fullUrl: `http://localhost:5001/photo-uploads/${accessCode}/${photo.filename}`
       }));
       setPhotos(fetchedPhotos);
       setHasSelectedPhoto(fetchedPhotos.some(photo => photo.selected_for_printing === 1));
@@ -120,7 +121,7 @@ function PhotoGallery() {
 
   const handleDownload = (photo) => {
     const link = document.createElement('a');
-    link.href = photo.url;
+    link.href = photo.fullUrl;
     link.download = photo.filename;
     document.body.appendChild(link);
     link.click();
@@ -141,7 +142,7 @@ function PhotoGallery() {
           <div key={photo.id} style={styles.photoContainer}>
             <div style={styles.photoWrapper}>
               <img 
-                src={photo.url} 
+                src={photo.thumbnailUrl} 
                 alt={photo.filename} 
                 style={styles.photo} 
                 onClick={() => openModal(photo)}
@@ -169,7 +170,7 @@ function PhotoGallery() {
       {selectedPhoto && (
         <div style={styles.modal} onClick={closeModal}>
           <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
-            <img src={selectedPhoto.url} alt={selectedPhoto.filename} style={styles.modalImage} />
+            <img src={selectedPhoto.fullUrl} alt={selectedPhoto.filename} style={styles.modalImage} />
             <button onClick={closeModal} style={styles.closeButton}>Close</button>
           </div>
         </div>
