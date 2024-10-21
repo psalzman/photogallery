@@ -22,27 +22,40 @@ function PrivateRoute({ children, allowedRole }) {
 function App() {
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<Login />} />
-        <Route
-          path="/admin"
-          element={
-            <PrivateRoute allowedRole="admin">
-              <AdminDashboard />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/gallery"
-          element={
-            <PrivateRoute>
-              <PhotoGallery />
-            </PrivateRoute>
-          }
-        />
-      </Routes>
+      <div style={styles.app}>
+        <Routes>
+          <Route path="/" element={<Login />} />
+          <Route
+            path="/admin"
+            element={
+              <PrivateRoute allowedRole="admin">
+                <AdminDashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/gallery"
+            element={
+              <PrivateRoute>
+                <PhotoGallery />
+              </PrivateRoute>
+            }
+          />
+        </Routes>
+      </div>
     </Router>
   );
 }
+
+const styles = {
+  app: {
+    fontFamily: "'Arial', sans-serif",
+    minHeight: '100vh',
+    margin: 0,
+    padding: 0,
+    backgroundColor: '#1a1a1a',
+    color: '#ffffff',
+  },
+};
 
 export default App;

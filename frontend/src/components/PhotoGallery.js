@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
+import Slideshow from './Slideshow';
 
 function ConfirmationDialog({ isOpen, onClose, onConfirm, photoUrl }) {
   if (!isOpen) return null;
@@ -13,8 +14,8 @@ function ConfirmationDialog({ isOpen, onClose, onConfirm, photoUrl }) {
         <p>Are you sure this is the photo you want printed? Choosing this photo for printing is irreversible.</p>
         <img src={photoUrl} alt="Selected" style={styles.confirmationImage} />
         <div style={styles.buttonContainer}>
-          <button onClick={onConfirm} style={styles.confirmButton}>Confirm</button>
-          <button onClick={onClose} style={styles.cancelButton}>Cancel</button>
+          <button onClick={onConfirm} style={styles.button}>Confirm</button>
+          <button onClick={onClose} style={styles.button}>Cancel</button>
         </div>
       </div>
     </div>
@@ -29,6 +30,8 @@ function PhotoGallery() {
   const [hasSelectedPhoto, setHasSelectedPhoto] = useState(false);
   const [accessCode, setAccessCode] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [modalAnimation, setModalAnimation] = useState('');
+  const [slideshowIndex, setSlideshowIndex] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -113,10 +116,15 @@ function PhotoGallery() {
 
   const openModal = (photo) => {
     setSelectedPhoto(photo);
+    setModalAnimation('openAnimation');
   };
 
   const closeModal = () => {
-    setSelectedPhoto(null);
+    setModalAnimation('closeAnimation');
+    setTimeout(() => {
+      setSelectedPhoto(null);
+      setModalAnimation('');
+    }, 300); // Match this with the animation duration
   };
 
   const handleDownload = (photo) => {
@@ -128,24 +136,32 @@ function PhotoGallery() {
     document.body.removeChild(link);
   };
 
+  const openSlideshow = (index) => {
+    setSlideshowIndex(index);
+  };
+
+  const closeSlideshow = () => {
+    setSlideshowIndex(null);
+  };
+
   if (isLoading) {
     return <div style={styles.container}><p>Loading photos...</p></div>;
   }
 
   return (
     <div style={styles.container}>
-      <h1 style={styles.title}>Photo Gallery</h1>
       <button onClick={handleLogout} style={styles.logoutButton}>Logout</button>
+      <h1 style={styles.title}>Photo Gallery</h1>
       {error && <p style={styles.error}>{error}</p>}
       <div style={styles.photoGrid}>
-        {photos.map(photo => (
+        {photos.map((photo, index) => (
           <div key={photo.id} style={styles.photoContainer}>
             <div style={styles.photoWrapper}>
               <img 
                 src={photo.thumbnailUrl} 
                 alt={photo.filename} 
                 style={styles.photo} 
-                onClick={() => openModal(photo)}
+                onClick={() => openSlideshow(index)}
               />
               {photo.selected_for_printing === 1 && (
                 <div style={styles.selectedOverlay}>
@@ -154,24 +170,24 @@ function PhotoGallery() {
               )}
             </div>
             {!hasSelectedPhoto && photo.selected_for_printing === 0 && (
-              <button onClick={() => handleSelectPhoto(photo.id, photo.url)} style={styles.selectButton}>
+              <button onClick={() => handleSelectPhoto(photo.id, photo.fullUrl)} style={styles.button}>
                 Select for Printing
               </button>
             )}
             {photo.selected_for_printing === 1 && (
               <p style={styles.selectedText}>Selected for Printing</p>
             )}
-            <button onClick={() => handleDownload(photo)} style={styles.downloadButton}>
+            <button onClick={() => handleDownload(photo)} style={styles.button}>
               Download
             </button>
           </div>
         ))}
       </div>
       {selectedPhoto && (
-        <div style={styles.modal} onClick={closeModal}>
-          <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
+        <div style={{...styles.modal, animation: `${modalAnimation} 0.3s ease-out`}} onClick={closeModal}>
+          <div style={{...styles.modalContent, animation: `${modalAnimation === 'openAnimation' ? 'modalContentOpen' : 'modalContentClose'} 0.3s ease-out`}} onClick={e => e.stopPropagation()}>
             <img src={selectedPhoto.fullUrl} alt={selectedPhoto.filename} style={styles.modalImage} />
-            <button onClick={closeModal} style={styles.closeButton}>Close</button>
+            <button onClick={closeModal} style={styles.button}>Close</button>
           </div>
         </div>
       )}
@@ -181,6 +197,13 @@ function PhotoGallery() {
         onConfirm={handleConfirmSelection}
         photoUrl={confirmationDialog.photoUrl}
       />
+      {slideshowIndex !== null && (
+        <Slideshow
+          photos={photos}
+          startIndex={slideshowIndex}
+          onClose={closeSlideshow}
+        />
+      )}
     </div>
   );
 }
@@ -191,6 +214,7 @@ const styles = {
     backgroundColor: '#1e1e1e',
     color: '#ffffff',
     minHeight: '100vh',
+    position: 'relative',
   },
   title: {
     textAlign: 'center',
@@ -240,39 +264,41 @@ const styles = {
     fontSize: '48px',
     fontWeight: 'bold',
   },
-  selectButton: {
+  button: {
     marginTop: '10px',
-    padding: '5px 10px',
-    backgroundColor: '#4CAF50',
+    padding: '10px 20px',
+    backgroundColor: '#333333',
     color: 'white',
     border: 'none',
-    borderRadius: '4px',
+    borderRadius: '25px',
     cursor: 'pointer',
-  },
-  selectedText: {
-    marginTop: '10px',
-    color: '#4CAF50',
-    fontWeight: 'bold',
-  },
-  downloadButton: {
-    marginTop: '10px',
-    padding: '5px 10px',
-    backgroundColor: '#3498db',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
+    transition: 'background-color 0.3s ease',
+    width: '180px',
+    fontSize: '14px',
+    '&:hover': {
+      backgroundColor: '#555555',
+    },
   },
   logoutButton: {
     position: 'absolute',
     top: '20px',
     right: '20px',
     padding: '10px 20px',
-    backgroundColor: '#f44336',
+    backgroundColor: '#333333',
     color: 'white',
     border: 'none',
-    borderRadius: '4px',
+    borderRadius: '25px',
     cursor: 'pointer',
+    transition: 'background-color 0.3s ease',
+    fontSize: '14px',
+    '&:hover': {
+      backgroundColor: '#555555',
+    },
+  },
+  selectedText: {
+    marginTop: '10px',
+    color: '#ffffff',
+    fontWeight: 'bold',
   },
   modal: {
     position: 'fixed',
@@ -300,17 +326,6 @@ const styles = {
     maxHeight: '70vh',
     objectFit: 'contain',
   },
-  closeButton: {
-    position: 'absolute',
-    top: '10px',
-    right: '10px',
-    padding: '5px 10px',
-    backgroundColor: '#f44336',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-  },
   confirmationImage: {
     maxWidth: '100%',
     maxHeight: '50vh',
@@ -322,21 +337,21 @@ const styles = {
     justifyContent: 'space-around',
     marginTop: '20px',
   },
-  confirmButton: {
-    padding: '10px 20px',
-    backgroundColor: '#4CAF50',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
+  '@keyframes openAnimation': {
+    from: { opacity: 0 },
+    to: { opacity: 1 },
   },
-  cancelButton: {
-    padding: '10px 20px',
-    backgroundColor: '#f44336',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
+  '@keyframes closeAnimation': {
+    from: { opacity: 1 },
+    to: { opacity: 0 },
+  },
+  '@keyframes modalContentOpen': {
+    from: { transform: 'scale(0.8)', opacity: 0 },
+    to: { transform: 'scale(1)', opacity: 1 },
+  },
+  '@keyframes modalContentClose': {
+    from: { transform: 'scale(1)', opacity: 1 },
+    to: { transform: 'scale(0.8)', opacity: 0 },
   },
 };
 

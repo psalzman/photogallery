@@ -35,6 +35,7 @@ function AdminDashboard() {
   const [accessCodeSearchResults, setAccessCodeSearchResults] = useState([]);
   const [galleryAccessCodeSearchQuery, setGalleryAccessCodeSearchQuery] = useState('');
   const [galleryAccessCodeSearchResults, setGalleryAccessCodeSearchResults] = useState([]);
+  const [modalPhoto, setModalPhoto] = useState(null);
   const navigate = useNavigate();
 
   const handleLogout = useCallback(() => {
@@ -363,11 +364,11 @@ function AdminDashboard() {
   };
 
   const openModal = (photo) => {
-    setSelectedPhoto(photo);
+    setModalPhoto(photo);
   };
 
   const closeModal = () => {
-    setSelectedPhoto(null);
+    setModalPhoto(null);
   };
 
   const handleDownloadPhoto = async (selectionId) => {
@@ -475,7 +476,7 @@ function AdminDashboard() {
               placeholder="Search Viewer's Email or Full Name"
               value={searchQuery}
               onChange={handleSearchChange}
-              style={{...styles.input, width: '100%'}}
+              style={styles.input}
               required
             />
             {searchResults.length > 0 && (
@@ -641,10 +642,10 @@ function AdminDashboard() {
           </>
         )}
       </div>
-      {selectedPhoto && (
+      {modalPhoto && (
         <div style={styles.modal} onClick={closeModal}>
-          <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
-            <img src={selectedPhoto.fullUrl} alt={selectedPhoto.filename} style={styles.modalImage} />
+          <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <img src={modalPhoto.fullUrl} alt={modalPhoto.filename} style={styles.modalImage} />
             <button onClick={closeModal} style={styles.closeButton}>Close</button>
           </div>
         </div>
@@ -656,7 +657,7 @@ function AdminDashboard() {
 const styles = {
   container: {
     display: 'flex',
-    height: '100vh',
+    minHeight: '100vh',
     backgroundColor: '#1e1e1e',
     color: '#ffffff',
   },
@@ -669,15 +670,6 @@ const styles = {
   sidebarTitle: {
     marginBottom: '20px',
     textAlign: 'center',
-  },
-  logoutButton: {
-    padding: '10px 20px',
-    backgroundColor: '#ff4d4d',
-    border: 'none',
-    borderRadius: '4px',
-    color: '#ffffff',
-    cursor: 'pointer',
-    width: '100%',
   },
   content: {
     flex: 1,
@@ -703,7 +695,6 @@ const styles = {
     backgroundColor: '#3c3c3c',
     color: '#ffffff',
     fontSize: '16px',
-    width: '100%',
   },
   select: {
     padding: '10px',
@@ -714,14 +705,34 @@ const styles = {
     color: '#ffffff',
   },
   button: {
-    padding: '10px',
-    backgroundColor: '#555555',
+    marginTop: '10px',
+    padding: '10px 20px',
+    backgroundColor: '#333333',
+    color: 'white',
     border: 'none',
-    borderRadius: '4px',
-    color: '#ffffff',
+    borderRadius: '25px',
     cursor: 'pointer',
-    marginBottom: '20px',
-    width: 'fit-content',
+    transition: 'background-color 0.3s ease',
+    width: '180px',
+    fontSize: '14px',
+    '&:hover': {
+      backgroundColor: '#555555',
+    },
+  },
+  logoutButton: {
+    padding: '10px 20px',
+    backgroundColor: '#333333',
+    color: 'white',
+    border: 'none',
+    borderRadius: '25px',
+    cursor: 'pointer',
+    transition: 'background-color 0.3s ease',
+    fontSize: '14px',
+    width: '100%',
+    marginTop: '20px',
+    '&:hover': {
+      backgroundColor: '#555555',
+    },
   },
   list: {
     listStyleType: 'none',
@@ -770,13 +781,21 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
+    backgroundColor: '#2c2c2c',
+    borderRadius: '8px',
+    padding: '10px',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
   },
   photoWrapper: {
     position: 'relative',
     width: '100%',
-    height: '200px',
+    paddingBottom: '100%', // This creates a square aspect ratio
+    marginBottom: '10px',
   },
   photo: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
     width: '100%',
     height: '100%',
     objectFit: 'cover',
@@ -802,49 +821,30 @@ const styles = {
   },
   deleteButton: {
     marginTop: '10px',
-    padding: '5px 10px',
-    backgroundColor: '#ff4d4d',
+    padding: '8px 16px',
+    backgroundColor: '#333333',
     color: 'white',
     border: 'none',
-    borderRadius: '4px',
+    borderRadius: '25px',
     cursor: 'pointer',
+    transition: 'background-color 0.3s ease',
+    fontSize: '14px',
+    '&:hover': {
+      backgroundColor: '#555555',
+    },
   },
-  modal: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000,
-  },
-  modalContent: {
-    backgroundColor: '#2c2c2c',
-    padding: '20px',
-    borderRadius: '8px',
-    position: 'relative',
-    maxWidth: '90%',
-    maxHeight: '90%',
-    overflow: 'auto',
-  },
-  modalImage: {
-    maxWidth: '100%',
-    maxHeight: '70vh',
-    objectFit: 'contain',
-  },
-  closeButton: {
-    position: 'absolute',
-    top: '10px',
-    right: '10px',
-    padding: '5px 10px',
-    backgroundColor: '#f44336',
+  downloadButton: {
+    padding: '8px 16px',
+    backgroundColor: '#333333',
     color: 'white',
     border: 'none',
-    borderRadius: '4px',
+    borderRadius: '25px',
     cursor: 'pointer',
+    transition: 'background-color 0.3s ease',
+    fontSize: '14px',
+    '&:hover': {
+      backgroundColor: '#555555',
+    },
   },
   progressContainer: {
     width: '100%',
@@ -868,12 +868,20 @@ const styles = {
   },
   fileInputLabel: {
     display: 'inline-block',
-    padding: '10px',
-    backgroundColor: '#555555',
-    color: '#ffffff',
-    borderRadius: '4px',
+    padding: '10px 20px',
+    backgroundColor: '#333333',
+    color: 'white',
+    border: 'none',
+    borderRadius: '25px',
     cursor: 'pointer',
+    transition: 'background-color 0.3s ease',
+    width: '180px',
+    fontSize: '14px',
     marginBottom: '20px',
+    textAlign: 'center',
+    '&:hover': {
+      backgroundColor: '#555555',
+    },
   },
   fileInput: {
     display: 'none',
@@ -903,13 +911,46 @@ const styles = {
       backgroundColor: '#555555',
     },
   },
-  downloadButton: {
+  modal: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  modalContent: {
+    backgroundColor: '#2c2c2c',
+    padding: '20px',
+    borderRadius: '8px',
+    position: 'relative',
+    maxWidth: '90%',
+    maxHeight: '90%',
+    overflow: 'auto',
+  },
+  modalImage: {
+    maxWidth: '100%',
+    maxHeight: '80vh',
+    objectFit: 'contain',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: '10px',
+    right: '10px',
     padding: '5px 10px',
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#333333',
     color: 'white',
     border: 'none',
-    borderRadius: '4px',
+    borderRadius: '25px',
     cursor: 'pointer',
+    fontSize: '16px',
+    '&:hover': {
+      backgroundColor: '#555555',
+    },
   },
 };
 
