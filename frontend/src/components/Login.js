@@ -31,7 +31,7 @@ function Login() {
   return (
     <div style={styles.container}>
       <div style={styles.loginBox}>
-        <h1 style={styles.title}>photo.transfer</h1>
+        <h1 style={styles.title}>.login</h1>
         <form onSubmit={handleSubmit} style={styles.form}>
           <input
             type="text"
