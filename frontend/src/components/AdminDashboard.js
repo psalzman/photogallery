@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
+export default AdminDashboard;
 
 function ProgressBar({ progress }) {
   return (
@@ -36,6 +37,8 @@ function AdminDashboard() {
   const [galleryAccessCodeSearchQuery, setGalleryAccessCodeSearchQuery] = useState('');
   const [galleryAccessCodeSearchResults, setGalleryAccessCodeSearchResults] = useState([]);
   const [modalPhoto, setModalPhoto] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const navigate = useNavigate();
 
   const handleLogout = useCallback(() => {
@@ -417,6 +420,12 @@ function AdminDashboard() {
     }
   };
 
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentAccessCodes = accessCodes.slice(indexOfFirstItem, indexOfLastItem);
+
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
   if (isLoading) {
     return <div style={styles.container}><p>Loading...</p></div>;
   }
@@ -428,134 +437,152 @@ function AdminDashboard() {
         <button onClick={handleLogout} style={styles.logoutButton}>Logout</button>
       </div>
       <div style={styles.content}>
-        <h2 style={styles.title}>Manage Access Codes</h2>
         {error && <p style={styles.error}>{error}</p>}
         {message && <p style={styles.message}>{message}</p>}
-        <form onSubmit={handleCreateAccessCode} style={styles.form}>
-          <input
-            type="email"
-            placeholder="Email"
-            value={newEmail}
-            onChange={(e) => setNewEmail(e.target.value)}
-            style={styles.input}
-            required
-          />
-          <input
-            type="text"
-            placeholder="Full Name"
-            value={newFullName}
-            onChange={(e) => setNewFullName(e.target.value)}
-            style={styles.input}
-            required
-          />
-          <input
-            type="text"
-            placeholder="New Access Code"
-            value={newCode}
-            onChange={(e) => setNewCode(e.target.value)}
-            style={styles.input}
-            required
-          />
-          <select
-            value={newRole}
-            onChange={(e) => setNewRole(e.target.value)}
-            style={styles.select}
-            required
-          >
-            <option value="viewer">Viewer</option>
-            <option value="admin">Admin</option>
-          </select>
-          <button type="submit" style={styles.button}>Create Access Code</button>
-        </form>
-
-        <h2 style={styles.title}>Assign Additional Access Code</h2>
-        <form onSubmit={handleAssignAccessCode} style={styles.form}>
-          <div style={styles.searchContainer}>
-            <input
-              type="text"
-              placeholder="Search Viewer's Email or Full Name"
-              value={searchQuery}
-              onChange={handleSearchChange}
-              style={styles.input}
-              required
-            />
-            {searchResults.length > 0 && (
-              <ul style={styles.searchResults}>
-                {searchResults.map((result) => (
-                  <li
-                    key={result.email}
-                    onClick={() => handleSelectEmail(result.email)}
-                    style={styles.searchResultItem}
-                  >
-                    {result.email} - {result.full_name}
-                  </li>
-                ))}
-              </ul>
-            )}
+        
+        <div style={styles.row}>
+          <div style={styles.column}>
+            <h2 style={styles.title}>Manage Access Codes</h2>
+            <form onSubmit={handleCreateAccessCode} style={styles.form}>
+              <input
+                type="email"
+                placeholder="Email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                style={styles.input}
+                required
+              />
+              <input
+                type="text"
+                placeholder="Full Name"
+                value={newFullName}
+                onChange={(e) => setNewFullName(e.target.value)}
+                style={styles.input}
+                required
+              />
+              <input
+                type="text"
+                placeholder="New Access Code"
+                value={newCode}
+                onChange={(e) => setNewCode(e.target.value)}
+                style={styles.input}
+                required
+              />
+              <select
+                value={newRole}
+                onChange={(e) => setNewRole(e.target.value)}
+                style={styles.select}
+                required
+              >
+                <option value="viewer">Viewer</option>
+                <option value="admin">Admin</option>
+              </select>
+              <button type="submit" style={styles.button}>Create Access Code</button>
+            </form>
           </div>
-          <input
-            type="text"
-            placeholder="New Access Code"
-            value={assignCode}
-            onChange={(e) => setAssignCode(e.target.value)}
-            style={styles.input}
-            required
-          />
-          <button type="submit" style={styles.button}>Assign Access Code</button>
-        </form>
-
-        <h2 style={styles.title}>Existing Access Codes</h2>
-        <ul style={styles.list}>
-          {accessCodes.map(code => (
-            <li key={code.email + code.code} style={styles.listItem}>
-              <span style={styles.email}>{code.email}</span> - 
-              <span style={styles.fullName}>{code.full_name}</span> - 
-              <span style={styles.code}>{code.code}</span> - 
-              <span style={styles.role}>{code.role}</span>
-            </li>
-          ))}
-        </ul>
-
-        <h2 style={styles.title}>Upload Photos</h2>
-        <div style={styles.form}>
-          <div style={styles.searchContainer}>
-            <input
-              type="text"
-              placeholder="Search Access Code or Email"
-              value={accessCodeSearchQuery}
-              onChange={handleAccessCodeSearchChange}
-              style={styles.input}
-              required
-            />
-            {accessCodeSearchResults.length > 0 && (
-              <ul style={styles.searchResults}>
-                {accessCodeSearchResults.map((result) => (
-                  <li
-                    key={result.code}
-                    onClick={() => handleSelectAccessCode(result.code)}
-                    style={styles.searchResultItem}
-                  >
-                    {result.code} - {result.email} ({result.full_name})
-                  </li>
-                ))}
-              </ul>
-            )}
+          <div style={styles.column}>
+            <h2 style={styles.title}>Assign Additional Access Code</h2>
+            <form onSubmit={handleAssignAccessCode} style={styles.form}>
+              <div style={styles.searchContainer}>
+                <input
+                  type="text"
+                  placeholder="Search Viewer's Email or Full Name"
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  style={styles.input}
+                  required
+                />
+                {searchResults.length > 0 && (
+                  <ul style={styles.searchResults}>
+                    {searchResults.map((result) => (
+                      <li
+                        key={result.email}
+                        onClick={() => handleSelectEmail(result.email)}
+                        style={styles.searchResultItem}
+                      >
+                        {result.email} - {result.full_name}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <input
+                type="text"
+                placeholder="New Access Code"
+                value={assignCode}
+                onChange={(e) => setAssignCode(e.target.value)}
+                style={styles.input}
+                required
+              />
+              <button type="submit" style={styles.button}>Assign Access Code</button>
+            </form>
           </div>
-          <p>Selected Access Code: {selectedAccessCode}</p>
-          <label htmlFor="photo-upload" style={styles.fileInputLabel}>
-            Select Photos (up to 100)
-          </label>
-          <input
-            id="photo-upload"
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={handleFileSelect}
-            style={styles.fileInput}
-            required
-          />
-          <button onClick={handlePhotoUpload} style={styles.button}>Upload Photos</button>
-          {uploadProgress > 0 && <ProgressBar progress={uploadProgress} />}
+        </div>
+
+        <div style={styles.row}>
+          <div style={styles.column}>
+            <h2 style={styles.title}>Upload Photos</h2>
+            <div style={styles.form}>
+              <div style={styles.searchContainer}>
+                <input
+                  type="text"
+                  placeholder="Search Access Code or Email"
+                  value={accessCodeSearchQuery}
+                  onChange={handleAccessCodeSearchChange}
+                  style={styles.input}
+                  required
+                />
+                {accessCodeSearchResults.length > 0 && (
+                  <ul style={styles.searchResults}>
+                    {accessCodeSearchResults.map((result) => (
+                      <li
+                        key={result.code}
+                        onClick={() => handleSelectAccessCode(result.code)}
+                        style={styles.searchResultItem}
+                      >
+                        {result.code} - {result.email} ({result.full_name})
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <p>Selected Access Code: {selectedAccessCode}</p>
+              <label htmlFor="photo-upload" style={styles.fileInputLabel}>
+                Select Photos (up to 100)
+              </label>
+              <input
+                id="photo-upload"
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleFileSelect}
+                style={styles.fileInput}
+                required
+              />
+              <button onClick={handlePhotoUpload} style={styles.button}>Upload Photos</button>
+              {uploadProgress > 0 && <ProgressBar progress={uploadProgress} />}
+            </div>
+          </div>
+          <div style={styles.column}>
+            <h2 style={styles.title}>Existing Access Codes</h2>
+            <ul style={styles.list}>
+              {currentAccessCodes.map(code => (
+                <li key={code.email + code.code} style={styles.listItem}>
+                  <span style={styles.email}>{code.email}</span> - 
+                  <span style={styles.fullName}>{code.full_name}</span> - 
+                  <span style={styles.code}>{code.code}</span> - 
+                  <span style={styles.role}>{code.role}</span>
+                </li>
+              ))}
+            </ul>
+            <div style={styles.pagination}>
+              {Array.from({ length: Math.ceil(accessCodes.length / itemsPerPage) }, (_, i) => (
+                <button key={i} onClick={() => paginate(i + 1)} style={styles.paginationButton}>
+                  {i + 1}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         <h2 style={styles.title}>View Access Code Gallery</h2>
@@ -695,6 +722,8 @@ const styles = {
     backgroundColor: '#3c3c3c',
     color: '#ffffff',
     fontSize: '16px',
+    width: '100%', // Add this line to make all inputs full width
+    boxSizing: 'border-box', // Add this line to include padding in the width calculation
   },
   select: {
     padding: '10px',
@@ -888,6 +917,7 @@ const styles = {
   },
   searchContainer: {
     position: 'relative',
+    width: '100%', // Add this line to make the container full width
   },
   searchResults: {
     position: 'absolute',
@@ -902,20 +932,21 @@ const styles = {
     margin: 0,
     maxHeight: '200px',
     overflowY: 'auto',
-    zIndex: 1000,
+    zIndex: 1000,  
   },
-  searchResultItem: {
-    padding: '10px',
-    cursor: 'pointer',
-    '&:hover': {
-      backgroundColor: '#555555',
+    searchResultItem: {
+      padding: '10px',
+      cursor: 'pointer',
+      '&:hover': {
+        backgroundColor: '#555555',
+      },
     },
-  },
-  modal: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    width: '100%',
+    modal: {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+  
+    width: '100%', 
     height: '100%',
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
     display: 'flex',
@@ -952,6 +983,30 @@ const styles = {
       backgroundColor: '#555555',
     },
   },
+  row: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    marginBottom: '40px',
+  },
+  column: {
+    width: '48%',
+  },
+  pagination: {
+    display: 'flex',
+    justifyContent: 'center',
+    marginTop: '20px',
+  },
+  paginationButton: {
+    padding: '5px 10px',
+    margin: '0 5px',
+    backgroundColor: '#333333',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    transition: 'background-color 0.3s ease',
+    '&:hover': {
+      backgroundColor: '#555555',
+    },
+  },
 };
-
-export default AdminDashboard;
