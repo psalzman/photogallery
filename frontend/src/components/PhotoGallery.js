@@ -30,6 +30,7 @@ function PhotoGallery() {
   const [confirmationDialog, setConfirmationDialog] = useState({ isOpen: false, photoId: null, photoUrl: '' });
   const [hasSelectedPhoto, setHasSelectedPhoto] = useState(false);
   const [accessCode, setAccessCode] = useState('');
+  const [fullName, setFullName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [modalAnimation, setModalAnimation] = useState('');
   const [slideshowIndex, setSlideshowIndex] = useState(null);
@@ -41,6 +42,7 @@ function PhotoGallery() {
       try {
         const decodedToken = jwtDecode(token);
         setAccessCode(decodedToken.code);
+        setFullName(decodedToken.fullName || 'User');
       } catch (err) {
         console.error('Error decoding token:', err);
         setError('Session expired. Please login again.');
@@ -96,7 +98,6 @@ function PhotoGallery() {
       alert('Photo selected for printing!');
       setConfirmationDialog({ isOpen: false, photoId: null, photoUrl: '' });
       setHasSelectedPhoto(true);
-      // Update the local state to reflect the change
       setPhotos(photos.map(photo => 
         photo.id === confirmationDialog.photoId 
           ? { ...photo, selected_for_printing: 1 } 
@@ -125,7 +126,7 @@ function PhotoGallery() {
     setTimeout(() => {
       setSelectedPhoto(null);
       setModalAnimation('');
-    }, 300); // Match this with the animation duration
+    }, 300);
   };
 
   const handleDownload = (photo) => {
@@ -151,8 +152,16 @@ function PhotoGallery() {
 
   return (
     <div style={styles.container}>
-      <button onClick={handleLogout} style={styles.logoutButton}>Logout</button>
-      <h1 style={styles.title}>Photo Gallery</h1>
+      <div style={styles.header}>
+        <div style={styles.headerLeft}>
+          <h1 style={styles.title}>.l'art pour l'art</h1>
+          <div style={styles.userInfo}>
+            <span style={styles.userName}>{fullName}</span>
+            <span style={styles.accessCode}>Access Code: {accessCode}</span>
+          </div>
+        </div>
+        <button onClick={handleLogout} style={styles.logoutButton}>Logout</button>
+      </div>
       {error && <p style={styles.error}>{error}</p>}
       <div style={styles.photoGrid}>
         {photos.map((photo, index) => (
@@ -211,15 +220,48 @@ function PhotoGallery() {
 
 const styles = {
   container: {
-    padding: '40px',
     backgroundColor: '#1e1e1e',
     color: '#ffffff',
     minHeight: '100vh',
     position: 'relative',
   },
-  title: {
-    textAlign: 'center',
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    padding: '20px',
     marginBottom: '30px',
+    backgroundColor: '#333333', // Matching the footer background color
+  },
+  headerLeft: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
+  title: {
+    color: '#ffffff',
+    fontSize: '28px',
+    fontWeight: '300',
+    letterSpacing: '2px',
+    margin: '0 0 20px 0', // Increased bottom margin
+  },
+  userInfo: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
+  userName: {
+    color: '#ffffff',
+    fontSize: '22px',
+    fontWeight: '300',
+    letterSpacing: '1px',
+    marginBottom: '5px', // Added space between name and access code
+  },
+  accessCode: {
+    color: '#ffffff',
+    fontSize: '14px',
+    fontWeight: '300',
+    letterSpacing: '1px',
   },
   error: {
     color: '#ff4d4d',
@@ -230,6 +272,7 @@ const styles = {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
     gap: '20px',
+    padding: '0 20px', // Added horizontal padding
   },
   photoContainer: {
     display: 'flex',
@@ -281,11 +324,8 @@ const styles = {
     },
   },
   logoutButton: {
-    position: 'absolute',
-    top: '20px',
-    right: '20px',
     padding: '10px 20px',
-    backgroundColor: '#333333',
+    backgroundColor: '#1e1e1e',
     color: 'white',
     border: 'none',
     borderRadius: '25px',
