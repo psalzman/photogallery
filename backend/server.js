@@ -10,7 +10,18 @@ const setupAdminAccount = require('./setupAdminAccount');
 const app = express();
 const port = 5001;
 
-app.use(cors());
+// CORS configuration
+const corsOptions = {
+  origin: [
+    'http://localhost:3000',  // Your frontend development server
+    'http://photo.app.devstack.one:8080',  // Your production domain
+    'https://yourdomain.com', // Secure version of your production domain
+    // Add any other domains or IP addresses you want to allow here
+  ],
+  optionsSuccessStatus: 200 // For legacy browser support
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);
