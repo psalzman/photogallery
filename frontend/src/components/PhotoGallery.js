@@ -1,3 +1,4 @@
+import API_BASE_URL from '../config/api';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -58,13 +59,13 @@ function PhotoGallery() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`http://localhost:5001/api/photos/${accessCode}`, {
+      const response = await axios.get(`${API_BASE_URL}/api/photos/${accessCode}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const fetchedPhotos = response.data.photos.map(photo => ({
         ...photo,
-        thumbnailUrl: `http://localhost:5001/photo-uploads/${accessCode}/${photo.thumbnail_filename}`,
-        fullUrl: `http://localhost:5001/photo-uploads/${accessCode}/${photo.filename}`
+        thumbnailUrl: `${API_BASE_URL}/photo-uploads/${accessCode}/${photo.thumbnail_filename}`,
+        fullUrl: `${API_BASE_URL}/photo-uploads/${accessCode}/${photo.filename}`
       }));
       setPhotos(fetchedPhotos);
       setHasSelectedPhoto(fetchedPhotos.some(photo => photo.selected_for_printing === 1));
@@ -88,7 +89,7 @@ function PhotoGallery() {
     try {
       const token = localStorage.getItem('token');
       console.log('Sending request to select photo for printing:', confirmationDialog.photoId);
-      const response = await axios.post(`http://localhost:5001/api/photos/${confirmationDialog.photoId}/select-print`, {}, {
+      const response = await axios.post(`${API_BASE_URL}/api/photos/${confirmationDialog.photoId}/select-print`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       console.log('Response from select-print:', response.data);
