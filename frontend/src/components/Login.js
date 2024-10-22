@@ -34,7 +34,7 @@ function Login() {
   return (
     <div style={styles.container}>
       <div style={styles.loginBox}>
-        <h2 style={styles.title}>Photo Gallery Login</h2>
+        <h2 style={styles.title}>whats the secret?</h2>
         {error && <p style={styles.error}>{error}</p>}
         <form onSubmit={handleSubmit} style={styles.form}>
           <input

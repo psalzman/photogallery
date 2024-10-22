@@ -23,7 +23,7 @@ function Footer() {
   return (
     <footer style={footerStyle}>
       <a href="https://salzstudio.com" target="_blank" rel="noopener noreferrer" style={linkStyle}>
-        Developed in Florida by Salz Studio & DevStack.One
+        developed in florida by salz studio & devStack.one
       </a>
     </footer>
   );
