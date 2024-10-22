@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import styles from './styles';
+import API_BASE_URL from '../../config/api';
 
-function PrintSelections({ setError }) {
+function PrintSelections({ setError, refreshTrigger }) {
   const [printSelections, setPrintSelections] = useState([]);
 
   const fetchPrintSelections = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5001/api/print-selections', {
+      const response = await axios.get(`${API_BASE_URL}/api/print-selections`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -22,12 +23,12 @@ function PrintSelections({ setError }) {
 
   useEffect(() => {
     fetchPrintSelections();
-  }, [fetchPrintSelections]);
+  }, [fetchPrintSelections, refreshTrigger]);
 
   const handleDownloadPhoto = useCallback(async (selectionId) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`http://localhost:5001/api/print-selections/download/${selectionId}`, {
+      const response = await axios.get(`${API_BASE_URL}/api/print-selections/download/${selectionId}`, {
         headers: {
           Authorization: `Bearer ${token}`
         },
@@ -47,10 +48,25 @@ function PrintSelections({ setError }) {
     }
   }, [setError]);
 
+  const handleRemoveFromPrint = useCallback(async (selectionId) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`${API_BASE_URL}/api/print-selections/${selectionId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      fetchPrintSelections(); // Refresh the list after removal
+    } catch (err) {
+      console.error('Error removing print selection:', err);
+      setError('Failed to remove print selection. Please try again.');
+    }
+  }, [setError, fetchPrintSelections]);
+
   const handleDownloadAllPhotos = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5001/api/print-selections/download-all', {
+      const response = await axios.get(`${API_BASE_URL}/api/print-selections/download-all`, {
         headers: {
           Authorization: `Bearer ${token}`
         },
@@ -86,7 +102,7 @@ function PrintSelections({ setError }) {
                 <th style={styles.tableHeaderCell}>Viewer Email</th>
                 <th style={styles.tableHeaderCell}>Viewer Full Name</th>
                 <th style={styles.tableHeaderCell}>Access Code</th>
-                <th style={styles.tableHeaderCell}>Action</th>
+                <th style={styles.tableHeaderCell}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -100,6 +116,9 @@ function PrintSelections({ setError }) {
                   <td style={styles.tableCell}>
                     <button onClick={() => handleDownloadPhoto(selection.selectionId)} style={styles.downloadButton}>
                       Download
+                    </button>
+                    <button onClick={() => handleRemoveFromPrint(selection.selectionId)} style={styles.removeButton}>
+                      Remove from Print
                     </button>
                   </td>
                 </tr>

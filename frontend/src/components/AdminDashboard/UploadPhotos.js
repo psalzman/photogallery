@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import axios from 'axios';
 import styles from './styles';
+import API_BASE_URL from '../../config/api';
 
 function ProgressBar({ progress }) {
   return (
@@ -11,7 +12,7 @@ function ProgressBar({ progress }) {
   );
 }
 
-function UploadPhotos({ setError, setMessage }) {
+function UploadPhotos({ setError, setMessage, onPhotoUploaded }) {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [selectedAccessCode, setSelectedAccessCode] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -40,7 +41,7 @@ function UploadPhotos({ setError, setMessage }) {
       });
       formData.append('accessCode', selectedAccessCode);
 
-      const response = await axios.post('http://localhost:5001/api/photos/upload', formData, {
+      const response = await axios.post(`${API_BASE_URL}/api/photos/upload`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -55,6 +56,9 @@ function UploadPhotos({ setError, setMessage }) {
       setSelectedFiles([]);
       setSelectedAccessCode('');
       setUploadProgress(0);
+      if (onPhotoUploaded) {
+        onPhotoUploaded();
+      }
     } catch (err) {
       console.error('Error uploading photos:', err);
       if (err.response && err.response.data && err.response.data.error) {
@@ -77,7 +81,7 @@ function UploadPhotos({ setError, setMessage }) {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`http://localhost:5001/api/access-codes/search-codes?query=${query}`, {
+      const response = await axios.get(`${API_BASE_URL}/api/access-codes/search-codes?query=${query}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }

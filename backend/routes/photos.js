@@ -7,33 +7,16 @@ const sharp = require('sharp');
 const db = require('../database');
 const verifyToken = require('../middleware/verifyToken');
 
+const tempUploadDir = path.join(__dirname, '..', 'temp_uploads');
+fs.mkdirSync(tempUploadDir, { recursive: true });
+
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const accessCode = req.body.accessCode || req.query.accessCode;
-    console.log('Destination - Access Code:', accessCode);
-    const dir = `./photo-uploads/${accessCode}`;
-    fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
+    cb(null, tempUploadDir);
   },
   filename: function (req, file, cb) {
-    const accessCode = req.body.accessCode || req.query.accessCode;
-    console.log('Filename - Access Code:', accessCode);
-    db.get('SELECT full_name FROM access_codes WHERE code = ?', [accessCode], (err, row) => {
-      if (err) {
-        console.error('Error fetching full name:', err);
-        return cb(err);
-      }
-      if (!row) {
-        console.error('Access code not found:', accessCode);
-        return cb(new Error('Access code not found'));
-      }
-      const fullName = row.full_name.replace(/\s+/g, '_');
-      const epochTime = Date.now();
-      const fileExtension = path.extname(file.originalname);
-      const newFilename = `${fullName}-${accessCode}-${epochTime}${fileExtension}`;
-      console.log('New filename:', newFilename);
-      cb(null, newFilename);
-    });
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
   }
 });
 
@@ -51,18 +34,19 @@ router.post('/upload', verifyToken, (req, res) => {
   console.log('Upload route hit');
   console.log('Request body:', req.body);
   console.log('Request query:', req.query);
-  const accessCode = req.body.accessCode || req.query.accessCode;
-  console.log('Access Code:', accessCode);
-
-  if (!accessCode) {
-    console.error('Access code is missing');
-    return res.status(400).json({ error: 'Access code is required' });
-  }
-
+  
   upload.array('photos', 100)(req, res, async function (err) {
     if (err) {
       console.error('Error uploading files:', err);
       return res.status(500).json({ error: 'Failed to upload files', message: err.message });
+    }
+
+    const accessCode = req.body.accessCode;
+    console.log('Access Code:', accessCode);
+
+    if (!accessCode) {
+      console.error('Access code is missing');
+      return res.status(400).json({ error: 'Access code is required' });
     }
 
     console.log('Files uploaded successfully');
@@ -75,14 +59,21 @@ router.post('/upload', verifyToken, (req, res) => {
 
     console.log('Number of files uploaded:', uploadedFiles.length);
 
+    const finalUploadDir = path.join(__dirname, '..', 'photo-uploads', accessCode);
+    fs.mkdirSync(finalUploadDir, { recursive: true });
+
     const insertPromises = uploadedFiles.map(async (file) => {
-      const thumbnailFilename = `thumb_${file.filename}`;
-      const thumbnailPath = path.join(file.destination, thumbnailFilename);
-      await createThumbnail(file.path, thumbnailPath);
+      const finalFilename = `${Date.now()}-${file.originalname}`;
+      const finalFilePath = path.join(finalUploadDir, finalFilename);
+      const thumbnailFilename = `thumb_${finalFilename}`;
+      const thumbnailPath = path.join(finalUploadDir, thumbnailFilename);
+
+      await fs.promises.rename(file.path, finalFilePath);
+      await createThumbnail(finalFilePath, thumbnailPath);
 
       return new Promise((resolve, reject) => {
         db.run('INSERT INTO photos (filename, thumbnail_filename, access_code) VALUES (?, ?, ?)',
-          [file.filename, thumbnailFilename, accessCode],
+          [finalFilename, thumbnailFilename, accessCode],
           function(err) {
             if (err) {
               console.error('Error inserting photo:', err);

@@ -1,8 +1,9 @@
 import React, { useState, useCallback } from 'react';
 import axios from 'axios';
 import styles from './styles';
+import API_BASE_URL from '../../config/api';
 
-function ManageAccessCodes({ setError, setMessage }) {
+function ManageAccessCodes({ setError, setMessage, onAccessCodeCreated }) {
   const [newEmail, setNewEmail] = useState('');
   const [newFullName, setNewFullName] = useState('');
   const [newCode, setNewCode] = useState('');
@@ -20,7 +21,7 @@ function ManageAccessCodes({ setError, setMessage }) {
 
     try {
       const token = localStorage.getItem('token');
-      await axios.post('http://localhost:5001/api/access-codes', {
+      await axios.post(`${API_BASE_URL}/api/access-codes`, {
         email: newEmail,
         fullName: newFullName,
         code: newCode,
@@ -36,6 +37,11 @@ function ManageAccessCodes({ setError, setMessage }) {
       setNewFullName('');
       setNewCode('');
       setNewRole('viewer');
+      
+      // Call the callback function to notify the parent component
+      if (onAccessCodeCreated) {
+        onAccessCodeCreated();
+      }
     } catch (err) {
       if (err.response && err.response.data && err.response.data.error) {
         setError(err.response.data.error);
@@ -44,7 +50,7 @@ function ManageAccessCodes({ setError, setMessage }) {
       }
       console.error('Error creating access code:', err);
     }
-  }, [newEmail, newFullName, newCode, newRole, setError, setMessage]);
+  }, [newEmail, newFullName, newCode, newRole, setError, setMessage, onAccessCodeCreated]);
 
   return (
     <>

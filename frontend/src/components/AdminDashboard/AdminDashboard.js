@@ -1,6 +1,5 @@
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { jwtDecode } from 'jwt-decode';
 import styles from './styles';
 import ManageAccessCodes from './ManageAccessCodes';
 import AssignAccessCode from './AssignAccessCode';
@@ -12,6 +11,8 @@ import PrintSelections from './PrintSelections';
 function AdminDashboard() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [refreshAccessCodes, setRefreshAccessCodes] = useState(0);
+  const [refreshGallery, setRefreshGallery] = useState(0);
   const navigate = useNavigate();
 
   const handleLogout = useCallback(() => {
@@ -20,6 +21,14 @@ function AdminDashboard() {
     localStorage.removeItem('userEmail');
     navigate('/');
   }, [navigate]);
+
+  const handleAccessCodeCreated = useCallback(() => {
+    setRefreshAccessCodes(prev => prev + 1);
+  }, []);
+
+  const handlePhotoUploaded = useCallback(() => {
+    setRefreshGallery(prev => prev + 1);
+  }, []);
 
   return (
     <div style={styles.container}>
@@ -33,24 +42,36 @@ function AdminDashboard() {
         
         <div style={styles.row}>
           <div style={styles.column}>
-            <ManageAccessCodes setError={setError} setMessage={setMessage} />
+            <ManageAccessCodes 
+              setError={setError} 
+              setMessage={setMessage} 
+              onAccessCodeCreated={handleAccessCodeCreated}
+            />
           </div>
           <div style={styles.column}>
-            <AssignAccessCode setError={setError} setMessage={setMessage} />
+            <AssignAccessCode 
+              setError={setError} 
+              setMessage={setMessage} 
+              onAccessCodeAssigned={handleAccessCodeCreated}
+            />
           </div>
         </div>
 
         <div style={styles.row}>
           <div style={styles.column}>
-            <UploadPhotos setError={setError} setMessage={setMessage} />
+            <UploadPhotos 
+              setError={setError} 
+              setMessage={setMessage} 
+              onPhotoUploaded={handlePhotoUploaded}
+            />
           </div>
           <div style={styles.column}>
-            <ExistingAccessCodes />
+            <ExistingAccessCodes refreshTrigger={refreshAccessCodes} />
           </div>
         </div>
 
-        <ViewGallery setError={setError} />
-        <PrintSelections setError={setError} />
+        <ViewGallery setError={setError} refreshTrigger={refreshGallery} />
+        <PrintSelections setError={setError} refreshTrigger={refreshGallery} />
       </div>
     </div>
   );

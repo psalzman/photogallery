@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import API_BASE_URL from '../config/api';
 
 function Login() {
   const [accessCode, setAccessCode] = useState('');
@@ -12,12 +13,14 @@ function Login() {
     setError('');
 
     try {
-      const response = await axios.post('http://localhost:5001/api/auth/login', { accessCode });
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('userRole', response.data.userRole);
-      localStorage.setItem('userEmail', response.data.userEmail);
+      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, { accessCode });
+      const { token, userRole, userEmail } = response.data;
 
-      if (response.data.userRole === 'admin') {
+      localStorage.setItem('token', token);
+      localStorage.setItem('userRole', userRole);
+      localStorage.setItem('userEmail', userEmail);
+
+      if (userRole === 'admin') {
         navigate('/admin');
       } else {
         navigate('/gallery');
@@ -31,21 +34,19 @@ function Login() {
   return (
     <div style={styles.container}>
       <div style={styles.loginBox}>
-        <h1 style={styles.title}>.login</h1>
+        <h2 style={styles.title}>Photo Gallery Login</h2>
+        {error && <p style={styles.error}>{error}</p>}
         <form onSubmit={handleSubmit} style={styles.form}>
           <input
             type="text"
             value={accessCode}
             onChange={(e) => setAccessCode(e.target.value)}
-            placeholder="Enter access code"
-            style={styles.input}
+            placeholder="Enter your access code"
             required
+            style={styles.input}
           />
-          <button type="submit" style={styles.button}>
-            Enter Gallery
-          </button>
+          <button type="submit" style={styles.button}>Login</button>
         </form>
-        {error && <p style={styles.error}>{error}</p>}
       </div>
     </div>
   );

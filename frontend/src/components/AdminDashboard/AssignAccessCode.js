@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import axios from 'axios';
 import styles from './styles';
+import API_BASE_URL from '../../config/api';
 
 function AssignAccessCode({ setError, setMessage }) {
   const [assignEmail, setAssignEmail] = useState('');
@@ -20,7 +21,7 @@ function AssignAccessCode({ setError, setMessage }) {
 
     try {
       const token = localStorage.getItem('token');
-      await axios.post('http://localhost:5001/api/access-codes/assign', {
+      await axios.post(`${API_BASE_URL}/api/access-codes/assign`, {
         email: assignEmail,
         newCode: assignCode
       }, {
@@ -55,7 +56,7 @@ function AssignAccessCode({ setError, setMessage }) {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`http://localhost:5001/api/access-codes/search?query=${query}`, {
+      const response = await axios.get(`${API_BASE_URL}/api/access-codes/search?query=${query}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }

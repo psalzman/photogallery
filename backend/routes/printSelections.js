@@ -1,103 +1,40 @@
 const express = require('express');
 const router = express.Router();
+const path = require('path');
+const fs = require('fs');
+const archiver = require('archiver');
 const db = require('../database');
 const verifyToken = require('../middleware/verifyToken');
-const fs = require('fs');
-const path = require('path');
-const archiver = require('archiver');
 
-// Create a new print selection
-router.post('/', verifyToken, (req, res) => {
-  const { photoId } = req.body;
-  const accessCode = req.user.code;
-
-  db.run('INSERT INTO print_selections (photo_id, access_code) VALUES (?, ?)', [photoId, accessCode], function(err) {
-    if (err) {
-      console.error('Error inserting print selection:', err.message);
-      return res.status(500).json({ error: 'Failed to create print selection' });
-    }
-    res.status(201).json({ message: 'Print selection created successfully', id: this.lastID });
-  });
-});
-
-// Get all print selections (admin only)
+// Get all print selections
 router.get('/', verifyToken, (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Only admins can view print selections' });
-  }
-
-  const query = `
-    SELECT ps.id as selectionId, p.filename, ac.email as viewerEmail, ac.full_name as viewerFullName, ac.code as accessCode
+  db.all(`
+    SELECT ps.id as selectionId, p.filename, p.access_code, ac.email as viewerEmail, ac.full_name as viewerFullName
     FROM print_selections ps
     JOIN photos p ON ps.photo_id = p.id
-    JOIN access_codes ac ON ps.access_code = ac.code
-  `;
-
-  db.all(query, (err, rows) => {
+    JOIN access_codes ac ON p.access_code = ac.code
+    ORDER BY ps.id DESC
+  `, (err, rows) => {
     if (err) {
-      console.error('Error fetching print selections:', err.message);
+      console.error('Error fetching print selections:', err);
       return res.status(500).json({ error: 'Failed to fetch print selections' });
     }
     res.json({ printSelections: rows });
-  });
-});
-
-// Get print selections for a specific user
-router.get('/user', verifyToken, (req, res) => {
-  const accessCode = req.user.code;
-
-  const query = `
-    SELECT ps.id as selectionId, p.filename
-    FROM print_selections ps
-    JOIN photos p ON ps.photo_id = p.id
-    WHERE ps.access_code = ?
-  `;
-
-  db.all(query, [accessCode], (err, rows) => {
-    if (err) {
-      console.error('Error fetching user print selections:', err.message);
-      return res.status(500).json({ error: 'Failed to fetch print selections' });
-    }
-    res.json({ printSelections: rows });
-  });
-});
-
-// Delete a print selection
-router.delete('/:id', verifyToken, (req, res) => {
-  const selectionId = req.params.id;
-  const accessCode = req.user.code;
-
-  db.run('DELETE FROM print_selections WHERE id = ? AND access_code = ?', [selectionId, accessCode], function(err) {
-    if (err) {
-      console.error('Error deleting print selection:', err.message);
-      return res.status(500).json({ error: 'Failed to delete print selection' });
-    }
-    if (this.changes === 0) {
-      return res.status(404).json({ error: 'Print selection not found or not authorized to delete' });
-    }
-    res.json({ message: 'Print selection deleted successfully' });
   });
 });
 
 // Download a single photo
-router.get('/download/:selectionId', verifyToken, (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Only admins can download photos' });
-  }
+router.get('/download/:id', verifyToken, (req, res) => {
+  const selectionId = req.params.id;
 
-  const { selectionId } = req.params;
-
-  const query = `
-    SELECT p.filename, ac.code as accessCode
+  db.get(`
+    SELECT p.filename, p.access_code
     FROM print_selections ps
     JOIN photos p ON ps.photo_id = p.id
-    JOIN access_codes ac ON ps.access_code = ac.code
     WHERE ps.id = ?
-  `;
-
-  db.get(query, [selectionId], (err, row) => {
+  `, [selectionId], (err, row) => {
     if (err) {
-      console.error('Error fetching photo information:', err.message);
+      console.error('Error fetching photo information:', err);
       return res.status(500).json({ error: 'Failed to fetch photo information' });
     }
 
@@ -105,7 +42,7 @@ router.get('/download/:selectionId', verifyToken, (req, res) => {
       return res.status(404).json({ error: 'Photo not found' });
     }
 
-    const filePath = path.join(__dirname, '..', 'photo-uploads', row.accessCode, row.filename);
+    const filePath = path.join(__dirname, '..', 'photo-uploads', row.access_code, row.filename);
     res.download(filePath, row.filename, (err) => {
       if (err) {
         console.error('Error downloading file:', err);
@@ -117,36 +54,75 @@ router.get('/download/:selectionId', verifyToken, (req, res) => {
 
 // Download all selected photos as a zip file
 router.get('/download-all', verifyToken, (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({ error: 'Only admins can download photos' });
-  }
-
-  const query = `
-    SELECT p.filename, ac.code as accessCode
+  db.all(`
+    SELECT p.filename, p.access_code
     FROM print_selections ps
     JOIN photos p ON ps.photo_id = p.id
-    JOIN access_codes ac ON ps.access_code = ac.code
-  `;
-
-  db.all(query, (err, rows) => {
+  `, (err, rows) => {
     if (err) {
-      console.error('Error fetching photo information:', err.message);
-      return res.status(500).json({ error: 'Failed to fetch photo information' });
+      console.error('Error fetching selected photos:', err);
+      return res.status(500).json({ error: 'Failed to fetch selected photos' });
     }
 
     const archive = archiver('zip', {
       zlib: { level: 9 } // Sets the compression level.
     });
 
+    archive.on('error', function(err) {
+      res.status(500).json({error: err.message});
+    });
+
+    //on stream closed we can end the request
+    archive.on('end', function() {
+      console.log('Archive wrote %d bytes', archive.pointer());
+    });
+
+    //set the archive name
     res.attachment('selected_photos.zip');
+
+    //this is the streaming magic
     archive.pipe(res);
 
     rows.forEach(row => {
-      const filePath = path.join(__dirname, '..', 'photo-uploads', row.accessCode, row.filename);
+      const filePath = path.join(__dirname, '..', 'photo-uploads', row.access_code, row.filename);
       archive.file(filePath, { name: row.filename });
     });
 
     archive.finalize();
+  });
+});
+
+// Remove a print selection
+router.delete('/:id', verifyToken, (req, res) => {
+  const selectionId = req.params.id;
+
+  db.get('SELECT photo_id FROM print_selections WHERE id = ?', [selectionId], (err, row) => {
+    if (err) {
+      console.error('Error fetching print selection:', err);
+      return res.status(500).json({ error: 'Failed to fetch print selection information' });
+    }
+
+    if (!row) {
+      return res.status(404).json({ error: 'Print selection not found' });
+    }
+
+    const photoId = row.photo_id;
+
+    db.run('DELETE FROM print_selections WHERE id = ?', [selectionId], function(deleteErr) {
+      if (deleteErr) {
+        console.error('Error deleting print selection:', deleteErr);
+        return res.status(500).json({ error: 'Failed to delete print selection' });
+      }
+
+      db.run('UPDATE photos SET selected_for_printing = 0 WHERE id = ?', [photoId], function(updateErr) {
+        if (updateErr) {
+          console.error('Error updating photo selected_for_printing status:', updateErr);
+          return res.status(500).json({ error: 'Failed to update photo status' });
+        }
+
+        res.json({ message: 'Print selection removed successfully' });
+      });
+    });
   });
 });
 

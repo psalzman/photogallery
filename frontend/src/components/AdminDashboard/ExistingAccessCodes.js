@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import styles from './styles';
+import API_BASE_URL from '../../config/api';
 
-function ExistingAccessCodes() {
+function ExistingAccessCodes({ refreshTrigger }) {
   const [accessCodes, setAccessCodes] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -10,7 +11,7 @@ function ExistingAccessCodes() {
   const fetchAccessCodes = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5001/api/access-codes', {
+      const response = await axios.get(`${API_BASE_URL}/api/access-codes`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -23,7 +24,7 @@ function ExistingAccessCodes() {
 
   useEffect(() => {
     fetchAccessCodes();
-  }, [fetchAccessCodes]);
+  }, [fetchAccessCodes, refreshTrigger]);
 
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
