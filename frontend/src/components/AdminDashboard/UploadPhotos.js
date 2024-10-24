@@ -41,9 +41,9 @@ function UploadPhotos({ setError, setMessage, onPhotoUploaded }) {
       });
       formData.append('accessCode', selectedAccessCode);
 
-      const response = await axios.post(`${API_BASE_URL}/api/photos/upload`, formData, {
+      const response = await axios.post(`${API_BASE_URL}/photos/upload`, formData, {
         headers: {
-          Authorization: `Bearer ${token}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
         },
         onUploadProgress: (progressEvent) => {
@@ -68,7 +68,7 @@ function UploadPhotos({ setError, setMessage, onPhotoUploaded }) {
       }
       setUploadProgress(0);
     }
-  }, [selectedFiles, selectedAccessCode, setError, setMessage]);
+  }, [selectedFiles, selectedAccessCode, setError, setMessage, onPhotoUploaded]);
 
   const handleAccessCodeSearchChange = useCallback(async (e) => {
     const query = e.target.value;
@@ -81,9 +81,11 @@ function UploadPhotos({ setError, setMessage, onPhotoUploaded }) {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_BASE_URL}/api/access-codes/search-codes?query=${query}`, {
+      const response = await axios.get(`${API_BASE_URL}/access-codes/search-codes?query=${query}`, {
         headers: {
-          Authorization: `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
         }
       });
       setAccessCodeSearchResults(response.data.results);

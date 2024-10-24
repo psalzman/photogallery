@@ -1,5 +1,6 @@
-const { S3Client, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, DeleteObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
 const { Upload } = require('@aws-sdk/lib-storage');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const StorageService = require('./StorageService');
 const config = require('../config');
 const fs = require('fs').promises;
@@ -72,7 +73,25 @@ class S3StorageService extends StorageService {
 
     async getFileUrl(accessCode, filename) {
         const key = `${accessCode}/${filename}`;
-        return `https://${this.bucket}.s3.${config.storage.s3.region}.amazonaws.com/${key}`;
+        console.log(`Generating signed URL for: ${key}`);
+
+        try {
+            const command = new GetObjectCommand({
+                Bucket: this.bucket,
+                Key: key
+            });
+
+            // Generate a signed URL that expires in 1 hour
+            const signedUrl = await getSignedUrl(this.s3Client, command, {
+                expiresIn: 3600
+            });
+
+            console.log(`Generated signed URL for ${key}`);
+            return signedUrl;
+        } catch (error) {
+            console.error(`Error generating signed URL: ${error.message}`);
+            throw error;
+        }
     }
 }
 
