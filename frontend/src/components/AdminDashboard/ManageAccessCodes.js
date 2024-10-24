@@ -21,14 +21,16 @@ function ManageAccessCodes({ setError, setMessage, onAccessCodeCreated }) {
 
     try {
       const token = localStorage.getItem('token');
-      await axios.post(`${API_BASE_URL}/api/access-codes`, {
+      await axios.post(`${API_BASE_URL}/access-codes`, {
         email: newEmail,
         fullName: newFullName,
         code: newCode,
         role: newRole
       }, {
         headers: {
-          Authorization: `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
         }
       });
 
