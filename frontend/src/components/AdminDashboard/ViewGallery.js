@@ -155,7 +155,7 @@ function ViewGallery({ setError }) {
       {modalPhoto && (
         <div style={styles.modal} onClick={closeModal}>
           <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <img src={modalPhoto.imageUrl} alt={modalPhoto.filename} style={styles.modalImage} />
+            <img src={modalPhoto.mediumUrl} alt={modalPhoto.filename} style={styles.modalImage} />
             <button onClick={() => navigatePhoto(-1)} style={styles.navButton}>Previous</button>
             <button onClick={() => navigatePhoto(1)} style={styles.navButton}>Next</button>
             <button onClick={closeModal} style={styles.closeButton}>Close</button>

@@ -22,7 +22,7 @@ const Slideshow = ({ photos, startIndex, onClose }) => {
     <div style={styles.slideshowContainer}>
       <button style={styles.closeButton} onClick={onClose}>×</button>
       <button style={{...styles.navButton, left: '10px'}} onClick={() => setCurrentIndex((prevIndex) => (prevIndex - 1 + photos.length) % photos.length)}>‹</button>
-      <img src={photos[currentIndex].imageUrl} alt={photos[currentIndex].filename} style={styles.slideshowImage} />
+      <img src={photos[currentIndex].mediumUrl} alt={photos[currentIndex].filename} style={styles.slideshowImage} />
       <button style={{...styles.navButton, right: '10px'}} onClick={() => setCurrentIndex((prevIndex) => (prevIndex + 1) % photos.length)}>›</button>
     </div>
   );

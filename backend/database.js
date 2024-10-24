@@ -23,19 +23,34 @@ const db = new sqlite3.Database(dbPath, (err) => {
         }
       });
 
-      db.run(`CREATE TABLE IF NOT EXISTS photos (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        filename TEXT,
-        thumbnail_filename TEXT,
-        access_code TEXT,
-        selected_for_printing INTEGER DEFAULT 0,
-        FOREIGN KEY (access_code) REFERENCES access_codes (code)
-      )`, (err) => {
+      // Add medium_filename column if it doesn't exist
+      db.run(`PRAGMA table_info(photos)`, (err, rows) => {
         if (err) {
-          console.error('Error creating photos table:', err);
-        } else {
-          console.log('photos table created or already exists');
+          console.error('Error checking photos table schema:', err);
+          return;
         }
+        
+        db.run(`CREATE TABLE IF NOT EXISTS photos (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          filename TEXT,
+          thumbnail_filename TEXT,
+          medium_filename TEXT,
+          access_code TEXT,
+          selected_for_printing INTEGER DEFAULT 0,
+          FOREIGN KEY (access_code) REFERENCES access_codes (code)
+        )`, (err) => {
+          if (err) {
+            console.error('Error creating photos table:', err);
+          } else {
+            console.log('photos table created or already exists');
+            // Add medium_filename column if it doesn't exist
+            db.run(`ALTER TABLE photos ADD COLUMN medium_filename TEXT;`, (err) => {
+              if (err && !err.message.includes('duplicate column')) {
+                console.error('Error adding medium_filename column:', err);
+              }
+            });
+          }
+        });
       });
 
       db.run(`CREATE TABLE IF NOT EXISTS print_selections (

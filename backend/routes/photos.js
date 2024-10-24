@@ -25,21 +25,22 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 const storageService = StorageFactory.getStorage();
 
-console.log('Storage service initialized:', {
-  type: config.storage.type,
-  service: storageService.constructor.name
-});
-
-// Create thumbnail
-const createThumbnail = async (buffer) => {
-  return sharp(buffer)
+// Create thumbnail and medium-sized image
+const createResizedImages = async (buffer) => {
+  const thumbnail = await sharp(buffer)
     .resize(500, 500, { fit: 'inside', withoutEnlargement: true })
     .toBuffer();
+
+  const medium = await sharp(buffer)
+    .resize(2000, null, { fit: 'inside', withoutEnlargement: true })
+    .toBuffer();
+
+  return { thumbnail, medium };
 };
 
 // Upload photos
 router.post('/upload', verifyToken, (req, res) => {
-  console.log('Upload route hit with storage type:', config.storage.type);
+  console.log('Upload route hit');
   
   upload.array('photos', 100)(req, res, async function (err) {
     if (err) {
@@ -68,8 +69,9 @@ router.post('/upload', verifyToken, (req, res) => {
       try {
         const finalFilename = `${Date.now()}-${file.originalname}`;
         const fileBuffer = await fs.readFile(file.path);
-        const thumbnailBuffer = await createThumbnail(fileBuffer);
+        const { thumbnail, medium } = await createResizedImages(fileBuffer);
         const thumbnailFilename = `thumb_${finalFilename}`;
+        const mediumFilename = `medium_${finalFilename}`;
 
         console.log(`Processing file: ${finalFilename}`);
 
@@ -78,8 +80,12 @@ router.post('/upload', verifyToken, (req, res) => {
         console.log(`Uploaded original file: ${finalFilename}`);
         
         // Upload thumbnail
-        await storageService.uploadBuffer(thumbnailBuffer, accessCode, thumbnailFilename);
+        await storageService.uploadBuffer(thumbnail, accessCode, thumbnailFilename);
         console.log(`Uploaded thumbnail: ${thumbnailFilename}`);
+
+        // Upload medium-sized image
+        await storageService.uploadBuffer(medium, accessCode, mediumFilename);
+        console.log(`Uploaded medium image: ${mediumFilename}`);
 
         // Clean up temp file
         await fs.unlink(file.path).catch(err => {
@@ -87,8 +93,8 @@ router.post('/upload', verifyToken, (req, res) => {
         });
 
         return new Promise((resolve, reject) => {
-          db.run('INSERT INTO photos (filename, thumbnail_filename, access_code) VALUES (?, ?, ?)',
-            [finalFilename, thumbnailFilename, accessCode],
+          db.run('INSERT INTO photos (filename, thumbnail_filename, medium_filename, access_code) VALUES (?, ?, ?, ?)',
+            [finalFilename, thumbnailFilename, mediumFilename, accessCode],
             function(err) {
               if (err) {
                 console.error('Error inserting photo:', err);
@@ -127,14 +133,16 @@ router.get('/:accessCode', verifyToken, (req, res) => {
     }
 
     try {
-      // Add URLs for both original and thumbnail images
+      // Add URLs for original, medium, and thumbnail images
       const photosWithUrls = await Promise.all(rows.map(async (photo) => {
         const imageUrl = await storageService.getFileUrl(accessCode, photo.filename);
         const thumbnailUrl = await storageService.getFileUrl(accessCode, photo.thumbnail_filename);
+        const mediumUrl = await storageService.getFileUrl(accessCode, photo.medium_filename);
         return {
           ...photo,
           imageUrl,
-          thumbnailUrl
+          thumbnailUrl,
+          mediumUrl
         };
       }));
 
@@ -150,7 +158,7 @@ router.get('/:accessCode', verifyToken, (req, res) => {
 router.delete('/:id', verifyToken, (req, res) => {
   const photoId = req.params.id;
 
-  db.get('SELECT filename, thumbnail_filename, access_code FROM photos WHERE id = ?', [photoId], async (err, row) => {
+  db.get('SELECT filename, thumbnail_filename, medium_filename, access_code FROM photos WHERE id = ?', [photoId], async (err, row) => {
     if (err) {
       console.error('Error fetching photo:', err);
       return res.status(500).json({ error: 'Failed to fetch photo information' });
@@ -162,9 +170,10 @@ router.delete('/:id', verifyToken, (req, res) => {
 
     try {
       console.log(`Deleting files for photo ${photoId}`);
-      // Delete both original and thumbnail from storage
+      // Delete original, medium, and thumbnail from storage
       await storageService.deleteFile(row.access_code, row.filename);
       await storageService.deleteFile(row.access_code, row.thumbnail_filename);
+      await storageService.deleteFile(row.access_code, row.medium_filename);
 
       db.run('DELETE FROM photos WHERE id = ?', [photoId], function(deleteErr) {
         if (deleteErr) {
