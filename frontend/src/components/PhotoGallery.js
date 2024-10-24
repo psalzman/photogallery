@@ -226,7 +226,7 @@ function PhotoGallery() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_BASE_URL}/api/photos/${accessCode}`, {
+      const response = await axios.get(`${API_BASE_URL}/photos/${accessCode}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setPhotos(response.data.photos);
@@ -251,7 +251,7 @@ function PhotoGallery() {
     try {
       const token = localStorage.getItem('token');
       console.log('Sending request to select photo for printing:', confirmationDialog.photoId);
-      const response = await axios.post(`${API_BASE_URL}/api/photos/${confirmationDialog.photoId}/select-print`, {}, {
+      const response = await axios.post(`${API_BASE_URL}/photos/${confirmationDialog.photoId}/select-print`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       console.log('Response from select-print:', response.data);
@@ -367,7 +367,7 @@ function PhotoGallery() {
       {selectedPhoto && (
         <div style={{...styles.modal, animation: `${modalAnimation} 0.3s ease-out`}} onClick={closeModal}>
           <div style={{...styles.modalContent, animation: `${modalAnimation === 'openAnimation' ? 'modalContentOpen' : 'modalContentClose'} 0.3s ease-out`}} onClick={e => e.stopPropagation()}>
-            <img src={selectedPhoto.imageUrl} alt={selectedPhoto.filename} style={styles.modalImage} />
+            <img src={selectedPhoto.mediumUrl} alt={selectedPhoto.filename} style={styles.modalImage} />
             <button onClick={closeModal} style={styles.button}>Close</button>
           </div>
         </div>

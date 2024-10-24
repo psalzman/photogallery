@@ -13,7 +13,7 @@ function Login() {
     setError('');
 
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, { accessCode });
+      const response = await axios.post(`${API_BASE_URL}/auth/login`, { accessCode });
       const { token, userRole, userEmail } = response.data;
 
       localStorage.setItem('token', token);

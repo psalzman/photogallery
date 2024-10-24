@@ -26,7 +26,7 @@ function ViewGallery({ setError }) {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_BASE_URL}/api/access-codes/search-codes?query=${query}`, {
+      const response = await axios.get(`${API_BASE_URL}/access-codes/search-codes?query=${query}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -47,7 +47,7 @@ function ViewGallery({ setError }) {
   const fetchViewerPhotos = useCallback(async (accessCode) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_BASE_URL}/api/photos/${accessCode}`, {
+      const response = await axios.get(`${API_BASE_URL}/photos/${accessCode}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -62,7 +62,7 @@ function ViewGallery({ setError }) {
   const handleDeletePhoto = useCallback(async (photoId) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`${API_BASE_URL}/api/photos/${photoId}`, {
+      await axios.delete(`${API_BASE_URL}/photos/${photoId}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
