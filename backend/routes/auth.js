@@ -6,6 +6,8 @@ const config = require('../config');
 
 router.post('/login', (req, res) => {
   const { accessCode } = req.body;
+  console.log('Login attempt with access code:', accessCode);
+  console.log('JWT secret:', config.jwt.secret);
 
   if (!accessCode) {
     return res.status(400).json({ error: 'Access code is required' });
@@ -18,16 +20,33 @@ router.post('/login', (req, res) => {
     }
 
     if (!user) {
+      console.log('Invalid access code attempt');
       return res.status(401).json({ error: 'Invalid access code' });
     }
 
+    console.log('User found:', { email: user.email, role: user.role, code: user.code });
+
+    const tokenPayload = { 
+      email: user.email, 
+      role: user.role, 
+      code: user.code, 
+      fullName: user.full_name 
+    };
+    console.log('Token payload:', tokenPayload);
+
     const token = jwt.sign(
-      { email: user.email, role: user.role, code: user.code, fullName: user.full_name },
+      tokenPayload,
       config.jwt.secret,
       { expiresIn: '1h' }
     );
 
-    res.json({ token, userRole: user.role, userEmail: user.email });
+    console.log('Generated token:', token);
+
+    res.json({ 
+      token, 
+      userRole: user.role, 
+      userEmail: user.email 
+    });
   });
 });
 
