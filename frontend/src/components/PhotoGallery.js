@@ -203,9 +203,17 @@ function PhotoGallery() {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
+    console.log('Raw token from localStorage:', token);
+
     if (token) {
       try {
-        const decodedToken = jwtDecode(token);
+        // Remove 'Bearer ' prefix for decoding
+        const tokenValue = token.startsWith('Bearer ') ? token.slice(7) : token;
+        console.log('Token value for decoding:', tokenValue);
+        
+        const decodedToken = jwtDecode(tokenValue);
+        console.log('Decoded token:', decodedToken);
+        
         setAccessCode(decodedToken.code);
         setFullName(decodedToken.fullName || 'User');
       } catch (err) {
@@ -226,14 +234,22 @@ function PhotoGallery() {
 
     try {
       const token = localStorage.getItem('token');
+      console.log('Token for API request:', token);
+      
       const response = await axios.get(`${API_BASE_URL}/photos/${accessCode}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { 
+          'Authorization': token,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
       });
+      console.log('Photos response:', response.data);
       setPhotos(response.data.photos);
       setHasSelectedPhoto(response.data.photos.some(photo => photo.selected_for_printing === 1));
     } catch (err) {
-      setError('Failed to fetch photos. Please try again later.');
       console.error('Error fetching photos:', err);
+      console.error('Error response:', err.response?.data);
+      setError('Failed to fetch photos. Please try again later.');
     } finally {
       setIsLoading(false);
     }
@@ -252,7 +268,11 @@ function PhotoGallery() {
       const token = localStorage.getItem('token');
       console.log('Sending request to select photo for printing:', confirmationDialog.photoId);
       const response = await axios.post(`${API_BASE_URL}/photos/${confirmationDialog.photoId}/select-print`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { 
+          'Authorization': token,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
       });
       console.log('Response from select-print:', response.data);
       alert('Photo selected for printing!');

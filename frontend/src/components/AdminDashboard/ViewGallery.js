@@ -27,8 +27,10 @@ function ViewGallery({ setError }) {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(`${API_BASE_URL}/access-codes/search-codes?query=${query}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
+        headers: { 
+          'Authorization': token,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
         }
       });
       setGalleryAccessCodeSearchResults(response.data.results);
@@ -48,8 +50,10 @@ function ViewGallery({ setError }) {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(`${API_BASE_URL}/photos/${accessCode}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
+        headers: { 
+          'Authorization': token,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
         }
       });
       setPhotos(response.data.photos);
@@ -63,8 +67,10 @@ function ViewGallery({ setError }) {
     try {
       const token = localStorage.getItem('token');
       await axios.delete(`${API_BASE_URL}/photos/${photoId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`
+        headers: { 
+          'Authorization': token,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
         }
       });
       setPhotos(prevPhotos => prevPhotos.filter(photo => photo.id !== photoId));

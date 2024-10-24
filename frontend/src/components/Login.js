@@ -13,10 +13,20 @@ function Login() {
     setError('');
 
     try {
+      console.log('Making login request to:', `${API_BASE_URL}/auth/login`);
       const response = await axios.post(`${API_BASE_URL}/auth/login`, { accessCode });
+      console.log('Login response:', response.data);
+
       const { token, userRole, userEmail } = response.data;
 
-      localStorage.setItem('token', token);
+      if (!token) {
+        console.error('No token received in response');
+        setError('Authentication failed. Please try again.');
+        return;
+      }
+
+      console.log('Storing token:', token);
+      localStorage.setItem('token', `Bearer ${token}`);
       localStorage.setItem('userRole', userRole);
       localStorage.setItem('userEmail', userEmail);
 
@@ -26,8 +36,9 @@ function Login() {
         navigate('/gallery');
       }
     } catch (err) {
-      setError('Invalid access code. Please try again.');
       console.error('Login error:', err);
+      console.error('Error response:', err.response?.data);
+      setError('Invalid access code. Please try again.');
     }
   };
 
