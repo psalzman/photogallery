@@ -129,13 +129,22 @@ function PhotoGallery() {
     }, 300);
   };
 
-  const handleDownload = (photo) => {
-    const link = document.createElement('a');
-    link.href = photo.fullUrl;
-    link.download = photo.filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownload = async (photo) => {
+    try {
+      const response = await fetch(photo.fullUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = photo.filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      alert('Failed to download the file. Please try again.');
+    }
   };
 
   const openSlideshow = (index) => {
@@ -152,15 +161,15 @@ function PhotoGallery() {
 
   return (
     <div style={styles.container}>
-      <div style={styles.header}>
-        <div style={styles.headerLeft}>
+      <div style={styles.headerWrapper}>
+        <div style={styles.header}>
           <h1 style={styles.title}>.l'art pour l'art</h1>
-          <div style={styles.userInfo}>
-            <span style={styles.userName}>{fullName}</span>
-            <span style={styles.accessCode}>Access Code: {accessCode}</span>
-          </div>
+          <button onClick={handleLogout} style={styles.logoutButton}>Logout</button>
         </div>
-        <button onClick={handleLogout} style={styles.logoutButton}>Logout</button>
+      </div>
+      <div style={styles.userInfo}>
+        <span style={styles.userName}>{fullName}</span>
+        <span style={styles.accessCode}>Access Code: {accessCode}</span>
       </div>
       {error && <p style={styles.error}>{error}</p>}
       <div style={styles.photoGrid}>
@@ -179,17 +188,19 @@ function PhotoGallery() {
                 </div>
               )}
             </div>
-            {!hasSelectedPhoto && photo.selected_for_printing === 0 && (
-              <button onClick={() => handleSelectPhoto(photo.id, photo.fullUrl)} style={styles.button}>
-                Select for Printing
+            <div style={styles.photoActions}>
+              {!hasSelectedPhoto && photo.selected_for_printing === 0 && (
+                <button onClick={() => handleSelectPhoto(photo.id, photo.fullUrl)} style={styles.button}>
+                  Select for Printing
+                </button>
+              )}
+              {photo.selected_for_printing === 1 && (
+                <p style={styles.selectedText}>Selected for Printing</p>
+              )}
+              <button onClick={() => handleDownload(photo)} style={styles.button}>
+                Download
               </button>
-            )}
-            {photo.selected_for_printing === 1 && (
-              <p style={styles.selectedText}>Selected for Printing</p>
-            )}
-            <button onClick={() => handleDownload(photo)} style={styles.button}>
-              Download
-            </button>
+            </div>
           </div>
         ))}
       </div>
@@ -225,37 +236,38 @@ const styles = {
     minHeight: '100vh',
     position: 'relative',
   },
+  headerWrapper: {
+    backgroundColor: '#333333',
+  },
   header: {
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     padding: '20px',
-    marginBottom: '30px',
-    backgroundColor: '#333333', // Matching the footer background color
-  },
-  headerLeft: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'flex-start',
+    maxWidth: '1200px',
+    margin: '0 auto',
   },
   title: {
     color: '#ffffff',
     fontSize: '28px',
     fontWeight: '300',
     letterSpacing: '2px',
-    margin: '0 0 20px 0', // Increased bottom margin
+    margin: 0,
   },
   userInfo: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'flex-start',
+    padding: '20px',
+    maxWidth: '1200px',
+    margin: '0 auto',
   },
   userName: {
     color: '#ffffff',
     fontSize: '22px',
     fontWeight: '300',
     letterSpacing: '1px',
-    marginBottom: '5px', // Added space between name and access code
+    marginBottom: '5px',
   },
   accessCode: {
     color: '#ffffff',
@@ -270,21 +282,25 @@ const styles = {
   },
   photoGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+    gridTemplateColumns: 'repeat(4, 1fr)',
     gap: '20px',
-    padding: '0 20px', // Added horizontal padding
+    maxWidth: '1200px',
+    margin: '0 auto',
+    padding: '20px',
   },
   photoContainer: {
     display: 'flex',
     flexDirection: 'column',
-    alignItems: 'center',
   },
   photoWrapper: {
     position: 'relative',
-    width: '100%',
-    height: '200px',
+    paddingBottom: '100%', // 1:1 Aspect Ratio
+    overflow: 'hidden',
   },
   photo: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
     width: '100%',
     height: '100%',
     objectFit: 'cover',
@@ -308,16 +324,19 @@ const styles = {
     fontSize: '48px',
     fontWeight: 'bold',
   },
-  button: {
+  photoActions: {
     marginTop: '10px',
-    padding: '10px 20px',
+  },
+  button: {
+    marginTop: '5px',
+    padding: '8px 16px',
     backgroundColor: '#333333',
     color: 'white',
     border: 'none',
     borderRadius: '25px',
     cursor: 'pointer',
     transition: 'background-color 0.3s ease',
-    width: '180px',
+    width: '100%',
     fontSize: '14px',
     '&:hover': {
       backgroundColor: '#555555',
@@ -337,9 +356,10 @@ const styles = {
     },
   },
   selectedText: {
-    marginTop: '10px',
+    marginTop: '5px',
     color: '#ffffff',
     fontWeight: 'bold',
+    textAlign: 'center',
   },
   modal: {
     position: 'fixed',
@@ -377,22 +397,6 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-around',
     marginTop: '20px',
-  },
-  '@keyframes openAnimation': {
-    from: { opacity: 0 },
-    to: { opacity: 1 },
-  },
-  '@keyframes closeAnimation': {
-    from: { opacity: 1 },
-    to: { opacity: 0 },
-  },
-  '@keyframes modalContentOpen': {
-    from: { transform: 'scale(0.8)', opacity: 0 },
-    to: { transform: 'scale(1)', opacity: 1 },
-  },
-  '@keyframes modalContentClose': {
-    from: { transform: 'scale(1)', opacity: 1 },
-    to: { transform: 'scale(0.8)', opacity: 0 },
   },
 };
 

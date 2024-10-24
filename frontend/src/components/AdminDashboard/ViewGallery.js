@@ -63,7 +63,7 @@ function ViewGallery({ setError }) {
   const handleDeletePhoto = useCallback(async (photoId) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`${API_BASE_URL}:5001/api/photos/${photoId}`, {
+      await axios.delete(`${API_BASE_URL}/api/photos/${photoId}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
