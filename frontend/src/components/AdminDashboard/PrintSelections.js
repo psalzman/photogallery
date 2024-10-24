@@ -9,9 +9,11 @@ function PrintSelections({ setError, refreshTrigger }) {
   const fetchPrintSelections = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_BASE_URL}/api/print-selections`, {
+      const response = await axios.get(`${API_BASE_URL}/print-selections`, {
         headers: {
-          Authorization: `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
         }
       });
       setPrintSelections(response.data.printSelections);
@@ -28,9 +30,10 @@ function PrintSelections({ setError, refreshTrigger }) {
   const handleDownloadPhoto = useCallback(async (selectionId) => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_BASE_URL}/api/print-selections/download/${selectionId}`, {
+      const response = await axios.get(`${API_BASE_URL}/print-selections/download/${selectionId}`, {
         headers: {
-          Authorization: `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
         },
         responseType: 'blob'
       });
@@ -51,9 +54,11 @@ function PrintSelections({ setError, refreshTrigger }) {
   const handleRemoveFromPrint = useCallback(async (selectionId) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`${API_BASE_URL}/api/print-selections/${selectionId}`, {
+      await axios.delete(`${API_BASE_URL}/print-selections/${selectionId}`, {
         headers: {
-          Authorization: `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
         }
       });
       fetchPrintSelections(); // Refresh the list after removal
@@ -66,9 +71,10 @@ function PrintSelections({ setError, refreshTrigger }) {
   const handleDownloadAllPhotos = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_BASE_URL}/api/print-selections/download-all`, {
+      const response = await axios.get(`${API_BASE_URL}/print-selections/download-all`, {
         headers: {
-          Authorization: `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
         },
         responseType: 'blob'
       });

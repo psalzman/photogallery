@@ -21,12 +21,14 @@ function AssignAccessCode({ setError, setMessage }) {
 
     try {
       const token = localStorage.getItem('token');
-      await axios.post(`${API_BASE_URL}/api/access-codes/assign`, {
+      await axios.post(`${API_BASE_URL}/access-codes/assign`, {
         email: assignEmail,
         newCode: assignCode
       }, {
         headers: {
-          Authorization: `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
         }
       });
 
@@ -56,9 +58,11 @@ function AssignAccessCode({ setError, setMessage }) {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_BASE_URL}/api/access-codes/search?query=${query}`, {
+      const response = await axios.get(`${API_BASE_URL}/access-codes/search?query=${query}`, {
         headers: {
-          Authorization: `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
         }
       });
       setSearchResults(response.data.results);

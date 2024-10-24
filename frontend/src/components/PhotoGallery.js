@@ -238,7 +238,7 @@ function PhotoGallery() {
       
       const response = await axios.get(`${API_BASE_URL}/photos/${accessCode}`, {
         headers: { 
-          'Authorization': token,
+          'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
           'Content-Type': 'application/json'
         }
@@ -269,7 +269,7 @@ function PhotoGallery() {
       console.log('Sending request to select photo for printing:', confirmationDialog.photoId);
       const response = await axios.post(`${API_BASE_URL}/photos/${confirmationDialog.photoId}/select-print`, {}, {
         headers: { 
-          'Authorization': token,
+          'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
           'Content-Type': 'application/json'
         }

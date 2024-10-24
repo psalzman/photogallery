@@ -11,9 +11,11 @@ function ExistingAccessCodes({ refreshTrigger }) {
   const fetchAccessCodes = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_BASE_URL}/api/access-codes`, {
+      const response = await axios.get(`${API_BASE_URL}/access-codes`, {
         headers: {
-          Authorization: `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
         }
       });
       setAccessCodes(response.data.accessCodes);

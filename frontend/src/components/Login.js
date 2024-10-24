@@ -31,7 +31,8 @@ function Login() {
       }
 
       console.log('Storing token:', token);
-      localStorage.setItem('token', `Bearer ${token}`);
+      // Store token without 'Bearer ' prefix - it will be added when making requests
+      localStorage.setItem('token', token);
       localStorage.setItem('userRole', userRole);
       localStorage.setItem('userEmail', userEmail);
 
