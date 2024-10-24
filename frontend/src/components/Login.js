@@ -14,7 +14,12 @@ function Login() {
 
     try {
       console.log('Making login request to:', `${API_BASE_URL}/auth/login`);
-      const response = await axios.post(`${API_BASE_URL}/auth/login`, { accessCode });
+      const response = await axios.post(`${API_BASE_URL}/auth/login`, { accessCode }, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
       console.log('Login response:', response.data);
 
       const { token, userRole, userEmail } = response.data;
