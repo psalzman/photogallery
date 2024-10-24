@@ -1,8 +1,11 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import axios from 'axios';
-import styles from './styles';
+import baseStyles from './styles';
 import API_BASE_URL from '../../config/api';
 
+const styles = {
+  ...baseStyles
+};
 
 function ViewGallery({ setError }) {
   const [photos, setPhotos] = useState([]);
@@ -49,11 +52,7 @@ function ViewGallery({ setError }) {
           Authorization: `Bearer ${token}`
         }
       });
-      setPhotos(response.data.photos.map(photo => ({
-        ...photo,
-        thumbnailUrl: `${API_BASE_URL}/photo-uploads/${accessCode}/${photo.thumbnail_filename}`,
-        fullUrl: `${API_BASE_URL}/photo-uploads/${accessCode}/${photo.filename}`
-      })));
+      setPhotos(response.data.photos);
     } catch (err) {
       setError('Failed to fetch viewer photos. Please try again.');
       console.error('Error fetching viewer photos:', err);
@@ -138,7 +137,7 @@ function ViewGallery({ setError }) {
           <div key={photo.id} style={styles.photoContainer}>
             <div style={styles.photoWrapper}>
               <img 
-                src={photo.thumbnailUrl} 
+                src={photo.thumbnailUrl || photo.imageUrl} 
                 alt={photo.filename} 
                 style={styles.photo} 
                 onClick={() => openModal(photo, index)}
@@ -156,7 +155,7 @@ function ViewGallery({ setError }) {
       {modalPhoto && (
         <div style={styles.modal} onClick={closeModal}>
           <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <img src={modalPhoto.fullUrl} alt={modalPhoto.filename} style={styles.modalImage} />
+            <img src={modalPhoto.imageUrl} alt={modalPhoto.filename} style={styles.modalImage} />
             <button onClick={() => navigatePhoto(-1)} style={styles.navButton}>Previous</button>
             <button onClick={() => navigatePhoto(1)} style={styles.navButton}>Next</button>
             <button onClick={closeModal} style={styles.closeButton}>Close</button>

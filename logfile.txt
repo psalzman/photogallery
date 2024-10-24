@@ -1,0 +1,7 @@
+Plug-in error log for plug-in at: /Users/phillipsalzman/Library/Application Support/Adobe/Lightroom/Modules/LRplugin.lrdevplugin
+
+**** Error 1
+
+An error occurred while attempting to load this plug-in’s portion of the Export dialog.
+PhotoGalleryExportServiceProvider.lua:28: attempt to call method 'share' (a nil value)
+

@@ -16,12 +16,16 @@ This is a React-based web application for managing and viewing photo galleries w
   - Select photos for printing
 - Secure authentication system
 - Responsive design
+- Flexible storage options:
+  - Local disk storage
+  - Amazon S3 storage
 
 ## Prerequisites
 
 - Node.js (v14 or later)
 - npm (v6 or later)
 - SQLite
+- (Optional) Amazon S3 bucket and credentials for S3 storage
 
 ## Setup
 
@@ -39,23 +43,68 @@ This is a React-based web application for managing and viewing photo galleries w
    npm install
    ```
 
-3. Set up the database and create an admin account:
+3. Configure the environment:
+   ```
+   cd backend
+   cp .env.example .env
+   ```
+   Edit the `.env` file with your configuration:
+   - For local storage (default):
+     ```
+     STORAGE_TYPE=local
+     ```
+   - For S3 storage:
+     ```
+     STORAGE_TYPE=s3
+     S3_BUCKET=your-bucket-name
+     AWS_REGION=your-region
+     AWS_ACCESS_KEY_ID=your-access-key
+     AWS_SECRET_ACCESS_KEY=your-secret-key
+     ```
+
+4. Set up the database and create an admin account:
    ```
    node setupAdminAccount.js
    ```
 
-4. Start the backend server:
+5. Start the backend server:
    ```
    npm start
    ```
 
-5. In a new terminal, start the frontend development server:
+6. In a new terminal, start the frontend development server:
    ```
    cd ../frontend
    npm start
    ```
 
-6. Open your browser and navigate to `http://localhost:3000` to access the application.
+7. Open your browser and navigate to `http://localhost:3000` to access the application.
+
+## Storage Configuration
+
+The application supports two storage options for photos:
+
+### Local Storage
+- Default option
+- Stores files on the local disk
+- Configure through environment variables:
+  ```
+  STORAGE_TYPE=local
+  LOCAL_UPLOAD_DIR=photo-uploads
+  LOCAL_TEMP_DIR=temp_uploads
+  ```
+
+### Amazon S3 Storage
+- Stores files in Amazon S3
+- Requires an S3 bucket and AWS credentials
+- Configure through environment variables:
+  ```
+  STORAGE_TYPE=s3
+  S3_BUCKET=your-bucket-name
+  AWS_REGION=your-region
+  AWS_ACCESS_KEY_ID=your-access-key
+  AWS_SECRET_ACCESS_KEY=your-secret-key
+  ```
 
 ## Usage
 

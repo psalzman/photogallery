@@ -8,7 +8,7 @@ function verifyToken(req, res, next) {
     return res.status(403).json({ error: 'No token provided' });
   }
 
-  jwt.verify(token.split(' ')[1], config.jwtSecret, (err, decoded) => {
+  jwt.verify(token.split(' ')[1], config.jwt.secret, (err, decoded) => {
     if (err) {
       console.error('JWT verification error:', err);
       return res.status(401).json({ error: 'Failed to authenticate token' });
