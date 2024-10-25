@@ -1,55 +1,175 @@
-# Photo Gallery Application - User Documentation
+# Photo Gallery User Documentation
 
-## Table of Contents
+## Overview
 
-1. [Introduction](#introduction)
-2. [Accessing the Application](#accessing-the-application)
-3. [Admin Dashboard](#admin-dashboard)
-   - [Managing Access Codes](#managing-access-codes)
-   - [Uploading Photos](#uploading-photos)
-   - [Viewing Existing Access Codes](#viewing-existing-access-codes)
-   - [Managing Photo Galleries](#managing-photo-galleries)
-   - [Viewing Print Selections](#viewing-print-selections)
-4. [Viewer Interface](#viewer-interface)
-   - [Accessing a Gallery](#accessing-a-gallery)
-   - [Viewing Photos](#viewing-photos)
-   - [Selecting Photos for Printing](#selecting-photos-for-printing)
-5. [Troubleshooting](#troubleshooting)
+This photo gallery system allows photographers to share photos with clients using access codes. It supports different user roles, photo selection for printing, and secure photo downloads including bulk downloads.
 
-## Introduction
+## User Roles
 
-The Photo Gallery Application is a web-based platform that allows administrators to manage photo galleries and provide access to viewers using unique access codes. Viewers can browse photos and select them for printing.
+### Admin
+- Create and manage access codes
+- Upload photos
+- View all galleries
+- Delete photos
+- View print selections
+- Download selected photos in bulk
 
-## Accessing the Application
+### Viewer
+- View assigned gallery
+- Select photos for printing
+- Download individual photos
+- Download selected photos in bulk
 
-1. Open your web browser and navigate to the application URL (e.g., `http://localhost:3000`).
-2. You will be presented with a login screen.
+## Features
 
-## Admin Dashboard
+### Photo Viewing
+- Grid view with thumbnails
+- Slideshow view with medium-resolution images
+- Full-resolution downloads
+- Print selection capability
+- Bulk download options
 
-### Managing Access Codes
+### Access Code Management
+- Each gallery is protected by an access code
+- Users can have multiple access codes
+- Access codes can be assigned to different roles
 
-1. Log in with your admin credentials.
-2. In the "Manage Access Codes" section, enter the required information:
-   - Email
-   - Full Name
-   - New Access Code
-   - Role (Viewer or Admin)
-3. Click "Create Access Code" to generate a new access code.
+## Usage Guide
 
-### Uploading Photos
+### For Admins
 
-1. In the "Upload Photos" section of the Admin Dashboard, you'll see a search bar labeled "Search Access Code or Email".
-2. Start typing the access code or email associated with the gallery you want to upload photos to.
-3. As you type, a list of matching access codes will appear. Click on the correct access code to select it.
-4. You'll see a confirmation message showing the selected access code.
-5. Click the "Select Photos" button to open your computer's file browser.
-6. Select up to 100 photos that you want to upload. You can select multiple photos at once.
-7. After selecting the photos, you'll see a message indicating how many files you've selected.
-8. Click the "Upload Photos" button to start the upload process.
-9. A progress bar will appear, showing the upload progress.
-10. Once the upload is complete, you'll see a success message, and the selected files and access code will be cleared.
+#### Login
+1. Navigate to the login page
+2. Enter your admin access code
+3. You'll be redirected to the admin dashboard
 
-Note: If you encounter any errors during the upload process, an error message will be displayed. Make sure you've selected both an access code and at least one photo before attempting to upload.
+#### Managing Access Codes
+1. Go to "Manage Access Codes"
+2. To create a new access code:
+   - Enter email, full name, and desired access code
+   - Select role (viewer or admin)
+   - Click "Create Access Code"
+3. To assign additional access code:
+   - Search for existing user
+   - Enter new access code
+   - Click "Assign Access Code"
 
-... (rest of the content remains the same)
+#### Uploading Photos
+1. Go to "Upload Photos"
+2. Search for the target access code
+3. Select photos (up to 100 at a time)
+4. Click "Upload Photos"
+5. Wait for upload completion
+
+#### Viewing Galleries
+1. Go to "View Gallery"
+2. Search for access code or email
+3. Click on the desired gallery
+4. You can:
+   - View photos in grid or slideshow
+   - Delete photos
+   - See print selections
+   - Download selected photos
+
+### For Viewers
+
+#### Login
+1. Navigate to the login page
+2. Enter your access code
+3. You'll be redirected to your gallery
+
+#### Viewing Photos
+1. Grid View:
+   - Thumbnails are displayed in a grid
+   - Click any photo to enter slideshow view
+2. Slideshow View:
+   - Use arrow keys or buttons to navigate
+   - Click outside photo to exit
+
+#### Selecting Photos for Printing
+1. In grid view, click "Select for Printing"
+2. Confirm your selection
+3. Selected photo will be marked with a checkmark
+4. Selection is final and cannot be changed
+
+#### Downloading Photos
+1. Individual Downloads:
+   - Click "Download" under any photo
+   - Photo will be downloaded in full resolution
+
+2. Bulk Downloads:
+   - After selecting photos for printing
+   - Click "Download All Selected Photos"
+   - Wait for ZIP file preparation
+   - ZIP file will automatically download
+   - Contains all selected photos in full resolution
+
+## Technical Notes
+
+### Image Sizes
+The system provides three image sizes:
+1. Thumbnails (500px) - Used in grid view
+2. Medium (2000px) - Used in slideshow/modal views
+3. Original - Used for downloads
+
+### Download Options
+- Individual photo downloads
+- Bulk downloads as ZIP files
+- All downloads are in original resolution
+- ZIP files are automatically cleaned up
+
+### Security
+- All access is controlled by access codes
+- Photos are stored securely in S3
+- Downloads use time-limited secure URLs
+- Sessions expire after 1 hour
+- ZIP files are temporary and auto-deleted
+
+### Browser Support
+- Chrome (recommended)
+- Firefox
+- Safari
+- Edge
+
+### Performance Tips
+- Photos are automatically optimized for different views
+- Use grid view for browsing
+- Slideshow loads medium-resolution images for better performance
+- Downloads provide full-resolution files
+- Large ZIP downloads may take time to prepare
+
+## Troubleshooting
+
+### Common Issues
+
+#### Login Problems
+- Ensure access code is entered correctly
+- Check for spaces before or after the code
+- Try logging out and back in
+
+#### Photo Display Issues
+- Refresh the page
+- Clear browser cache
+- Check internet connection
+
+#### Download Issues
+- For individual downloads:
+  - Check browser download settings
+  - Ensure stable internet connection
+- For bulk downloads:
+  - Allow sufficient time for ZIP preparation
+  - Check available disk space
+  - Try downloading fewer photos if ZIP is too large
+
+#### Upload Issues
+- Ensure photos are in supported format (JPEG, PNG)
+- Check file size limits
+- Ensure stable internet connection
+
+### Getting Help
+Contact system administrator if you:
+- Can't access your gallery
+- Need a new access code
+- Experience technical issues
+- Need to change photo selections
+- Have problems with downloads

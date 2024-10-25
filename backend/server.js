@@ -1,5 +1,9 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const compression = require('compression');
+const morgan = require('morgan');
+const bodyParser = require('body-parser');
 const authRoutes = require('./routes/auth');
 const accessCodeRoutes = require('./routes/accessCodes');
 const photoRoutes = require('./routes/photos');
@@ -9,6 +13,9 @@ const setupAdminAccount = require('./setupAdminAccount');
 
 const app = express();
 const port = 5001;
+
+// Security middleware
+app.use(helmet());
 
 // CORS configuration
 const corsOptions = {
@@ -25,20 +32,24 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(express.json());
 
-// Log all incoming requests
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.url}`);
-  console.log('Headers:', req.headers);
-  next();
-});
+// Request logging
+app.use(morgan('combined'));
 
+// Compression middleware
+app.use(compression());
+
+// Body parsing middleware
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+
+// API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/access-codes', accessCodeRoutes);
 app.use('/api/photos', photoRoutes);
 app.use('/api/print-selections', printSelectionRoutes);
 
+// Static file serving
 app.use('/photo-uploads', express.static('photo-uploads'));
 
 // Error handling middleware

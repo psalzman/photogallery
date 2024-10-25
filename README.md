@@ -1,124 +1,171 @@
 # Photo Gallery Application
 
-This is a React-based web application for managing and viewing photo galleries with access code protection. It includes an admin dashboard for managing access codes and uploading photos, and a viewer interface for users to view and select photos for printing.
+A web application for managing and sharing photo galleries with access code control.
 
 ## Features
 
-- Admin Dashboard:
-  - Manage access codes
-  - Upload photos
-  - View existing access codes
-  - View and manage photo galleries
-  - See print selections
-- Viewer Interface:
-  - Access photo galleries using access codes
-  - View photos in a gallery
-  - Select photos for printing
-- Secure authentication system
+- Photo upload and management
+- Access code-based authentication
+- Admin and viewer roles
+- S3 storage integration
+- Responsive photo gallery
+- Print selection system
+- Multiple image sizes for optimal performance
+- Bulk photo downloads with ZIP compression
+
+## Technical Stack
+
+### Frontend
+- React
+- Axios for API calls
+- JWT for authentication
 - Responsive design
-- Flexible storage options:
-  - Local disk storage
-  - Amazon S3 storage
 
-## Prerequisites
-
-- Node.js (v14 or later)
-- npm (v6 or later)
-- SQLite
-- (Optional) Amazon S3 bucket and credentials for S3 storage
+### Backend
+- Node.js with Express
+- SQLite database
+- AWS S3 for photo storage
+- JWT authentication
+- Security middleware (helmet, cors)
+- Performance optimizations (compression)
+- Archiver for ZIP downloads
 
 ## Setup
 
-1. Clone the repository:
-   ```
-   git clone https://github.com/your-username/photo-gallery-app.git
-   cd photo-gallery-app
-   ```
+### Prerequisites
+- Node.js (v14 or higher)
+- npm
+- AWS S3 bucket
+- Apache web server (for production)
 
-2. Install dependencies for both frontend and backend:
-   ```
-   cd frontend
-   npm install
-   cd ../backend
-   npm install
-   ```
+### Backend Setup
 
-3. Configure the environment:
-   ```
-   cd backend
-   cp .env.example .env
-   ```
-   Edit the `.env` file with your configuration:
-   - For local storage (default):
-     ```
-     STORAGE_TYPE=local
-     ```
-   - For S3 storage:
-     ```
-     STORAGE_TYPE=s3
-     S3_BUCKET=your-bucket-name
-     AWS_REGION=your-region
-     AWS_ACCESS_KEY_ID=your-access-key
-     AWS_SECRET_ACCESS_KEY=your-secret-key
-     ```
+1. Install dependencies:
+```bash
+cd backend
+npm install
+```
 
-4. Set up the database and create an admin account:
-   ```
-   node setupAdminAccount.js
-   ```
+2. Create .env file with the following variables:
+```
+# JWT Configuration
+JWT_SECRET=your_jwt_secret_key
 
-5. Start the backend server:
-   ```
-   npm start
-   ```
+# Storage Configuration
+STORAGE_TYPE=s3
 
-6. In a new terminal, start the frontend development server:
-   ```
-   cd ../frontend
-   npm start
-   ```
+# S3 Configuration
+S3_BUCKET=your_bucket_name
+AWS_REGION=your_region
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+```
 
-7. Open your browser and navigate to `http://localhost:3000` to access the application.
+3. Start the server:
+```bash
+npm start
+```
 
-## Storage Configuration
+### Frontend Setup
 
-The application supports two storage options for photos:
+1. Install dependencies:
+```bash
+cd frontend
+npm install
+```
 
-### Local Storage
-- Default option
-- Stores files on the local disk
-- Configure through environment variables:
-  ```
-  STORAGE_TYPE=local
-  LOCAL_UPLOAD_DIR=photo-uploads
-  LOCAL_TEMP_DIR=temp_uploads
-  ```
+2. Start the development server:
+```bash
+npm start
+```
 
-### Amazon S3 Storage
-- Stores files in Amazon S3
-- Requires an S3 bucket and AWS credentials
-- Configure through environment variables:
-  ```
-  STORAGE_TYPE=s3
-  S3_BUCKET=your-bucket-name
-  AWS_REGION=your-region
-  AWS_ACCESS_KEY_ID=your-access-key
-  AWS_SECRET_ACCESS_KEY=your-secret-key
-  ```
+### Production Deployment
 
-## Usage
+1. Apache Configuration:
+```apache
+<VirtualHost *:80>
+    ServerName your-domain.com
 
-For detailed usage instructions, please refer to the [User Documentation](USER_DOCUMENTATION.md).
+    # First, handle /api requests
+    ProxyPass        /api        http://localhost:5001/api nocanon
+    ProxyPassReverse /api        http://localhost:5001/api
 
-## Contributing
+    # Then handle all other requests
+    ProxyPass        /           http://localhost:8080/
+    ProxyPassReverse /           http://localhost:8080/
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+    ErrorLog "logs/error.log"
+    CustomLog "logs/access.log" combined
+</VirtualHost>
+```
 
-## License
+2. Build frontend:
+```bash
+cd frontend
+npm run build
+```
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+3. Start backend:
+```bash
+cd backend
+npm start
+```
 
-## Acknowledgments
+## Security Features
 
-- Developed by Salz Studio & DevStack.One
-- Built with React, Node.js, and SQLite
+- JWT-based authentication
+- Secure file storage with S3 signed URLs
+- CORS protection
+- Security headers with helmet
+- Request logging
+- Error handling middleware
+
+## Image Processing
+
+The system handles three image sizes:
+1. Original: Full resolution (for downloads)
+2. Medium: 2000px wide (for slideshow/modal views)
+3. Thumbnail: 500px (for grid views)
+
+## Download Features
+
+- Individual photo downloads
+- Bulk downloads with ZIP compression (using archiver)
+- Automatic cleanup of temporary files
+- Progress tracking for large downloads
+
+## API Endpoints
+
+### Authentication
+- POST /api/auth/login - Login with access code
+
+### Access Codes
+- POST /api/access-codes - Create new access code
+- GET /api/access-codes - List access codes
+- POST /api/access-codes/assign - Assign additional access code
+
+### Photos
+- POST /api/photos/upload - Upload photos
+- GET /api/photos/:accessCode - Get photos for access code
+- DELETE /api/photos/:id - Delete photo
+- POST /api/photos/:id/select-print - Select photo for printing
+
+### Print Selections
+- GET /api/print-selections - Get print selections
+- GET /api/print-selections/download-all - Download all selected photos as ZIP
+- DELETE /api/print-selections/:id - Remove print selection
+
+## Dependencies
+
+### Key Backend Packages
+- express - Web framework
+- @aws-sdk/* - AWS S3 integration
+- sharp - Image processing
+- archiver - ZIP file creation
+- jsonwebtoken - Authentication
+- multer - File upload handling
+- sqlite3 - Database
+- helmet - Security headers
+- compression - Response compression
+- morgan - Request logging
+- body-parser - Request parsing
