@@ -1,16 +1,17 @@
 # Photo Gallery Application
 
-A web application for managing and sharing photo galleries with access code control.
+A web application for managing and sharing photo galleries with access code control, featuring comprehensive EXIF data storage and S3 integration.
 
 ## Features
 
 - Photo upload and management
 - Access code-based authentication
 - Admin and viewer roles
-- S3 storage integration
+- S3/Local storage options
 - Responsive photo gallery
 - Print selection system
 - Multiple image sizes for optimal performance
+- Complete EXIF data capture
 - Bulk photo downloads with ZIP compression
 
 ## Technical Stack
@@ -28,14 +29,78 @@ A web application for managing and sharing photo galleries with access code cont
 - JWT authentication
 - Security middleware (helmet, cors)
 - Performance optimizations (compression)
-- Archiver for ZIP downloads
+- EXIF data extraction
+- Image processing
+
+## Components
+
+### Backend Services
+
+#### StorageService
+Abstract interface for storage operations:
+- uploadFile
+- uploadBuffer
+- deleteFile
+- getFileUrl
+
+#### LocalStorageService
+Local filesystem implementation:
+- Stores files in configured directories
+- Maintains original, medium, and thumbnail versions
+- Handles file cleanup
+
+#### S3StorageService
+Amazon S3 implementation:
+- Secure file storage
+- Signed URLs for time-limited access
+- Bucket organization by access code
+- Automatic file versioning
+
+### Backend Routes
+
+#### Photos (/api/photos)
+- POST /upload - Upload photos with EXIF extraction
+- GET /:accessCode - Get photos for access code
+- DELETE /:id - Delete photo
+- POST /:id/select-print - Select photo for printing
+
+#### Access Codes (/api/access-codes)
+- POST / - Create new access code
+- GET / - List access codes
+- POST /assign - Assign additional access code
+- GET /search - Search access codes
+- GET /search-codes - Search codes for upload
+
+#### Print Selections (/api/print-selections)
+- GET / - Get print selections
+- GET /download-all - Download selected photos as ZIP
+- DELETE /:id - Remove print selection
+
+### Frontend Components
+
+#### PhotoGallery
+Main gallery view:
+- Grid layout with thumbnails
+- Slideshow view
+- Print selection
+- Download options
+- EXIF data display
+
+#### AdminDashboard
+Admin control panel:
+- ManageAccessCodes: Create/manage access codes
+- UploadPhotos: Photo upload with progress
+- ViewGallery: Browse all galleries
+- PrintSelections: View/manage selections
+- ExistingAccessCodes: List all codes
+- AssignAccessCode: Add codes to users
 
 ## Setup
 
 ### Prerequisites
 - Node.js (v14 or higher)
 - npm
-- AWS S3 bucket
+- AWS S3 bucket (for S3 storage)
 - Apache web server (for production)
 
 ### Backend Setup
@@ -52,13 +117,17 @@ npm install
 JWT_SECRET=your_jwt_secret_key
 
 # Storage Configuration
-STORAGE_TYPE=s3
+STORAGE_TYPE=s3  # or 'local'
 
-# S3 Configuration
+# S3 Configuration (if using S3)
 S3_BUCKET=your_bucket_name
 AWS_REGION=your_region
 AWS_ACCESS_KEY_ID=your_access_key
 AWS_SECRET_ACCESS_KEY=your_secret_key
+
+# Local Storage Configuration (if using local)
+LOCAL_UPLOAD_DIR=photo-uploads
+LOCAL_TEMP_DIR=temp_uploads
 ```
 
 3. Start the server:
@@ -111,49 +180,49 @@ cd backend
 npm start
 ```
 
+## Image Processing
+
+The system processes images in three sizes:
+1. Original: Full resolution with EXIF data
+2. Medium: 2000px wide for slideshow
+3. Thumbnail: 500px for grid view
+
+### EXIF Data Handling
+
+The system captures and stores:
+1. Camera Information:
+   - Make and model
+   - Lens details
+   - Software version
+
+2. Technical Settings:
+   - Exposure settings
+   - Aperture
+   - ISO
+   - Focal length
+   - Flash settings
+
+3. Image Details:
+   - Dimensions
+   - Color space
+   - GPS data (if available)
+   - Date/time
+   - Copyright info
+
+4. Raw Data:
+   - Complete EXIF structure
+   - Manufacturer-specific tags
+   - Base64 encoded original data
+
 ## Security Features
 
 - JWT-based authentication
-- Secure file storage with S3 signed URLs
+- Secure file storage
 - CORS protection
-- Security headers with helmet
+- Security headers
 - Request logging
-- Error handling middleware
-
-## Image Processing
-
-The system handles three image sizes:
-1. Original: Full resolution (for downloads)
-2. Medium: 2000px wide (for slideshow/modal views)
-3. Thumbnail: 500px (for grid views)
-
-## Download Features
-
-- Individual photo downloads
-- Bulk downloads with ZIP compression (using archiver)
-- Automatic cleanup of temporary files
-- Progress tracking for large downloads
-
-## API Endpoints
-
-### Authentication
-- POST /api/auth/login - Login with access code
-
-### Access Codes
-- POST /api/access-codes - Create new access code
-- GET /api/access-codes - List access codes
-- POST /api/access-codes/assign - Assign additional access code
-
-### Photos
-- POST /api/photos/upload - Upload photos
-- GET /api/photos/:accessCode - Get photos for access code
-- DELETE /api/photos/:id - Delete photo
-- POST /api/photos/:id/select-print - Select photo for printing
-
-### Print Selections
-- GET /api/print-selections - Get print selections
-- GET /api/print-selections/download-all - Download all selected photos as ZIP
-- DELETE /api/print-selections/:id - Remove print selection
+- Error handling
+- Signed URLs for S3
 
 ## Dependencies
 
@@ -161,11 +230,16 @@ The system handles three image sizes:
 - express - Web framework
 - @aws-sdk/* - AWS S3 integration
 - sharp - Image processing
-- archiver - ZIP file creation
+- exif-reader - EXIF extraction
+- archiver - ZIP creation
 - jsonwebtoken - Authentication
-- multer - File upload handling
+- multer - File upload
 - sqlite3 - Database
-- helmet - Security headers
-- compression - Response compression
-- morgan - Request logging
-- body-parser - Request parsing
+- helmet - Security
+- compression - Performance
+- morgan - Logging
+
+### Key Frontend Packages
+- react - UI framework
+- axios - HTTP client
+- jwt-decode - Token handling

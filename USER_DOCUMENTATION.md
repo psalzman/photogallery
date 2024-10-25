@@ -2,7 +2,7 @@
 
 ## Overview
 
-This photo gallery system allows photographers to share photos with clients using access codes. It supports different user roles, photo selection for printing, and secure photo downloads including bulk downloads.
+This photo gallery system allows photographers to share photos with clients using access codes. It features comprehensive EXIF data storage, multiple viewing options, and secure photo downloads.
 
 ## User Roles
 
@@ -12,13 +12,17 @@ This photo gallery system allows photographers to share photos with clients usin
 - View all galleries
 - Delete photos
 - View print selections
+- Access complete EXIF data
 - Download selected photos in bulk
+- Manage multiple galleries
 
 ### Viewer
 - View assigned gallery
 - Select photos for printing
 - Download individual photos
-- Download selected photos in bulk
+- View basic photo information
+- Access personal print selections
+- Download selected photos
 
 ## Features
 
@@ -27,12 +31,44 @@ This photo gallery system allows photographers to share photos with clients usin
 - Slideshow view with medium-resolution images
 - Full-resolution downloads
 - Print selection capability
+- EXIF data display
 - Bulk download options
+
+### Photo Information
+The system captures and displays comprehensive photo information:
+
+1. Basic Information:
+   - Filename
+   - Upload date
+   - Dimensions
+   - File size
+
+2. Camera Details:
+   - Camera make and model
+   - Lens information
+   - Software version
+
+3. Technical Settings:
+   - Exposure time
+   - Aperture (f-number)
+   - ISO speed
+   - Focal length
+   - Flash settings
+   - Metering mode
+   - White balance
+
+4. Additional Data (if available):
+   - GPS location
+   - Copyright information
+   - Date/time taken
+   - Scene type
+   - Digital zoom ratio
 
 ### Access Code Management
 - Each gallery is protected by an access code
 - Users can have multiple access codes
 - Access codes can be assigned to different roles
+- Search functionality for existing codes
 
 ## Usage Guide
 
@@ -60,6 +96,9 @@ This photo gallery system allows photographers to share photos with clients usin
 3. Select photos (up to 100 at a time)
 4. Click "Upload Photos"
 5. Wait for upload completion
+   - Photos are automatically processed
+   - EXIF data is extracted
+   - Multiple sizes are generated
 
 #### Viewing Galleries
 1. Go to "View Gallery"
@@ -69,7 +108,17 @@ This photo gallery system allows photographers to share photos with clients usin
    - View photos in grid or slideshow
    - Delete photos
    - See print selections
-   - Download selected photos
+   - View complete EXIF data
+   - Download photos
+
+#### Managing Print Selections
+1. Go to "Print Selections"
+2. View all selected photos
+3. Options:
+   - Download individual photos
+   - Download all as ZIP
+   - Remove selections
+   - View selection details
 
 ### For Viewers
 
@@ -82,9 +131,21 @@ This photo gallery system allows photographers to share photos with clients usin
 1. Grid View:
    - Thumbnails are displayed in a grid
    - Click any photo to enter slideshow view
+   - Hover for basic information
 2. Slideshow View:
    - Use arrow keys or buttons to navigate
    - Click outside photo to exit
+   - View photo details panel
+
+#### Photo Information
+1. Basic View:
+   - Click "Info" button on any photo
+   - See basic camera settings
+   - View capture date/time
+2. Detailed View (if enabled):
+   - Access complete technical data
+   - View camera/lens information
+   - See exposure settings
 
 #### Selecting Photos for Printing
 1. In grid view, click "Select for Printing"
@@ -112,16 +173,16 @@ The system provides three image sizes:
 2. Medium (2000px) - Used in slideshow/modal views
 3. Original - Used for downloads
 
-### Download Options
-- Individual photo downloads
-- Bulk downloads as ZIP files
-- All downloads are in original resolution
-- ZIP files are automatically cleaned up
+### Photo Storage
+- Photos are stored securely in the cloud
+- Downloads use time-limited secure URLs
+- Original files are preserved
+- EXIF data is maintained
 
 ### Security
 - All access is controlled by access codes
-- Photos are stored securely in S3
-- Downloads use time-limited secure URLs
+- Photos are stored securely
+- Downloads use secure URLs
 - Sessions expire after 1 hour
 - ZIP files are temporary and auto-deleted
 
@@ -165,6 +226,7 @@ The system provides three image sizes:
 - Ensure photos are in supported format (JPEG, PNG)
 - Check file size limits
 - Ensure stable internet connection
+- Verify EXIF data is readable
 
 ### Getting Help
 Contact system administrator if you:
@@ -173,3 +235,4 @@ Contact system administrator if you:
 - Experience technical issues
 - Need to change photo selections
 - Have problems with downloads
+- Need help with EXIF data
