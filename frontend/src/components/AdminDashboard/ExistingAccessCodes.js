@@ -37,29 +37,38 @@ function ExistingAccessCodes({ refreshTrigger }) {
   return (
     <>
       <h2 style={styles.title}>Existing Access Codes</h2>
-      <table style={styles.table}>
-        <thead>
-          <tr>
-            <th style={styles.tableHeaderCell}>Email</th>
-            <th style={styles.tableHeaderCell}>Full Name</th>
-            <th style={styles.tableHeaderCell}>Access Code</th>
-            <th style={styles.tableHeaderCell}>Role</th>
-          </tr>
-        </thead>
-        <tbody>
-          {currentAccessCodes.map(code => (
-            <tr key={code.email + code.code}>
-              <td style={styles.tableCell}>{code.email}</td>
-              <td style={styles.tableCell}>{code.full_name}</td>
-              <td style={styles.tableCell}>{code.code}</td>
-              <td style={styles.tableCell}>{code.role}</td>
+      <div style={styles.responsiveTable}>
+        <table style={styles.table}>
+          <thead>
+            <tr>
+              <th style={styles.tableHeaderCell}>Email</th>
+              <th style={styles.tableHeaderCell}>Full Name</th>
+              <th style={styles.tableHeaderCell}>Access Code</th>
+              <th style={styles.tableHeaderCell}>Role</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {currentAccessCodes.map(code => (
+              <tr key={code.email + code.code}>
+                <td style={styles.tableCell} data-label="Email">{code.email}</td>
+                <td style={styles.tableCell} data-label="Full Name">{code.full_name}</td>
+                <td style={styles.tableCell} data-label="Access Code">{code.code}</td>
+                <td style={styles.tableCell} data-label="Role">{code.role}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       <div style={styles.pagination}>
         {Array.from({ length: Math.ceil(accessCodes.length / itemsPerPage) }, (_, i) => (
-          <button key={i} onClick={() => paginate(i + 1)} style={styles.paginationButton}>
+          <button 
+            key={i} 
+            onClick={() => paginate(i + 1)} 
+            style={{
+              ...styles.paginationButton,
+              backgroundColor: currentPage === i + 1 ? '#4CAF50' : '#333333'
+            }}
+          >
             {i + 1}
           </button>
         ))}

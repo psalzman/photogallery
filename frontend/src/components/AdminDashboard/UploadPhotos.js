@@ -4,10 +4,26 @@ import styles from './styles';
 import API_BASE_URL from '../../config/api';
 
 function ProgressBar({ progress }) {
+  const mobileStyles = {
+    progressContainer: {
+      ...styles.progressContainer,
+      '@media (max-width: 768px)': {
+        height: '16px',
+      },
+    },
+    progressText: {
+      ...styles.progressText,
+      '@media (max-width: 768px)': {
+        fontSize: '10px',
+        lineHeight: '16px',
+      },
+    },
+  };
+
   return (
-    <div style={styles.progressContainer}>
+    <div style={mobileStyles.progressContainer}>
       <div style={{...styles.progressBar, width: `${progress}%`}}></div>
-      <span style={styles.progressText}>{progress.toFixed(0)}%</span>
+      <span style={mobileStyles.progressText}>{progress.toFixed(0)}%</span>
     </div>
   );
 }
@@ -20,7 +36,12 @@ function UploadPhotos({ setError, setMessage, onPhotoUploaded }) {
   const [accessCodeSearchResults, setAccessCodeSearchResults] = useState([]);
 
   const handleFileSelect = useCallback((e) => {
-    setSelectedFiles(Array.from(e.target.files));
+    const files = Array.from(e.target.files);
+    if (files.length > 100) {
+      setError('Maximum 100 photos allowed per upload');
+      return;
+    }
+    setSelectedFiles(files);
   }, []);
 
   const handlePhotoUpload = useCallback(async () => {
@@ -100,17 +121,62 @@ function UploadPhotos({ setError, setMessage, onPhotoUploaded }) {
     setAccessCodeSearchResults([]);
   }, []);
 
+  const mobileStyles = {
+    formWrapper: {
+      padding: '0 15px',
+      '@media (max-width: 768px)': {
+        padding: '0 10px',
+      },
+    },
+    searchContainer: {
+      ...styles.searchContainer,
+      marginBottom: '20px',
+      '@media (max-width: 768px)': {
+        marginBottom: '15px',
+      },
+    },
+    input: {
+      ...styles.input,
+      '@media (max-width: 768px)': {
+        fontSize: '16px',
+        padding: '12px',
+      },
+    },
+    button: {
+      ...styles.button,
+      '@media (max-width: 768px)': {
+        padding: '12px',
+        fontSize: '16px',
+      },
+    },
+    fileButton: {
+      ...styles.button,
+      backgroundColor: '#4CAF50',
+      '@media (max-width: 768px)': {
+        padding: '12px',
+        fontSize: '16px',
+      },
+    },
+    selectedFilesText: {
+      ...styles.selectedFilesText,
+      '@media (max-width: 768px)': {
+        fontSize: '12px',
+        marginTop: '8px',
+      },
+    },
+  };
+
   return (
     <>
       <h2 style={styles.title}>Upload Photos</h2>
-      <div style={styles.form}>
-        <div style={styles.searchContainer}>
+      <div style={mobileStyles.formWrapper}>
+        <div style={mobileStyles.searchContainer}>
           <input
             type="text"
             placeholder="Search Access Code or Email"
             value={accessCodeSearchQuery}
             onChange={handleAccessCodeSearchChange}
-            style={styles.input}
+            style={mobileStyles.input}
             required
           />
           {accessCodeSearchResults.length > 0 && (
@@ -127,7 +193,7 @@ function UploadPhotos({ setError, setMessage, onPhotoUploaded }) {
             </ul>
           )}
         </div>
-        <p>Selected Access Code: {selectedAccessCode}</p>
+        <p style={mobileStyles.selectedFilesText}>Selected Access Code: {selectedAccessCode}</p>
         <input
           id="photo-upload"
           type="file"
@@ -137,13 +203,13 @@ function UploadPhotos({ setError, setMessage, onPhotoUploaded }) {
           style={styles.fileInput}
           required
         />
-        <label htmlFor="photo-upload" style={styles.button}>
+        <label htmlFor="photo-upload" style={mobileStyles.fileButton}>
           Select Photos (up to 100)
         </label>
-        <span style={styles.selectedFilesText}>
+        <p style={mobileStyles.selectedFilesText}>
           {selectedFiles.length > 0 ? `${selectedFiles.length} file(s) selected` : 'No files selected'}
-        </span>
-        <button onClick={handlePhotoUpload} style={styles.button}>Upload Photos</button>
+        </p>
+        <button onClick={handlePhotoUpload} style={mobileStyles.button}>Upload Photos</button>
         {uploadProgress > 0 && <ProgressBar progress={uploadProgress} />}
       </div>
     </>

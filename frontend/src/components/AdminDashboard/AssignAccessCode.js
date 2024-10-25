@@ -77,43 +77,83 @@ function AssignAccessCode({ setError, setMessage }) {
     setSearchResults([]);
   }, []);
 
+  const mobileStyles = {
+    formWrapper: {
+      padding: '0 15px',
+      '@media (max-width: 768px)': {
+        padding: '0 10px',
+      },
+    },
+    searchContainer: {
+      ...styles.searchContainer,
+      marginBottom: '20px',
+      '@media (max-width: 768px)': {
+        marginBottom: '15px',
+      },
+    },
+    searchResults: {
+      ...styles.searchResults,
+      '@media (max-width: 768px)': {
+        maxHeight: '150px',
+      },
+    },
+    input: {
+      ...styles.input,
+      '@media (max-width: 768px)': {
+        fontSize: '16px', // Prevent zoom on iOS
+        padding: '12px',
+      },
+    },
+    button: {
+      ...styles.button,
+      '@media (max-width: 768px)': {
+        padding: '12px',
+        fontSize: '16px',
+      },
+    },
+  };
+
   return (
     <>
       <h2 style={styles.title}>Assign Additional Access Code</h2>
-      <form onSubmit={handleAssignAccessCode} style={styles.form}>
-        <div style={styles.searchContainer}>
+      <div style={mobileStyles.formWrapper}>
+        <form onSubmit={handleAssignAccessCode} style={styles.form}>
+          <div style={mobileStyles.searchContainer}>
+            <input
+              type="text"
+              placeholder="Search Viewer's Email or Full Name"
+              value={searchQuery}
+              onChange={handleSearchChange}
+              style={mobileStyles.input}
+              required
+            />
+            {searchResults.length > 0 && (
+              <ul style={mobileStyles.searchResults}>
+                {searchResults.map((result) => (
+                  <li
+                    key={result.email}
+                    onClick={() => handleSelectEmail(result.email)}
+                    style={styles.searchResultItem}
+                  >
+                    {result.email} - {result.full_name}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
           <input
             type="text"
-            placeholder="Search Viewer's Email or Full Name"
-            value={searchQuery}
-            onChange={handleSearchChange}
-            style={styles.input}
+            placeholder="New Access Code"
+            value={assignCode}
+            onChange={(e) => setAssignCode(e.target.value)}
+            style={mobileStyles.input}
             required
           />
-          {searchResults.length > 0 && (
-            <ul style={styles.searchResults}>
-              {searchResults.map((result) => (
-                <li
-                  key={result.email}
-                  onClick={() => handleSelectEmail(result.email)}
-                  style={styles.searchResultItem}
-                >
-                  {result.email} - {result.full_name}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-        <input
-          type="text"
-          placeholder="New Access Code"
-          value={assignCode}
-          onChange={(e) => setAssignCode(e.target.value)}
-          style={styles.input}
-          required
-        />
-        <button type="submit" style={styles.button}>Assign Access Code</button>
-      </form>
+          <button type="submit" style={mobileStyles.button}>
+            Assign Access Code
+          </button>
+        </form>
+      </div>
     </>
   );
 }

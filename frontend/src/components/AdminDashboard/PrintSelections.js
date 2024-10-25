@@ -61,7 +61,7 @@ function PrintSelections({ setError, refreshTrigger }) {
           'Content-Type': 'application/json'
         }
       });
-      fetchPrintSelections(); // Refresh the list after removal
+      fetchPrintSelections();
     } catch (err) {
       console.error('Error removing print selection:', err);
       setError('Failed to remove print selection. Please try again.');
@@ -100,38 +100,51 @@ function PrintSelections({ setError, refreshTrigger }) {
         <p>No print selections available.</p>
       ) : (
         <>
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th style={styles.tableHeaderCell}>Selection ID</th>
-                <th style={styles.tableHeaderCell}>Photo Filename</th>
-                <th style={styles.tableHeaderCell}>Viewer Email</th>
-                <th style={styles.tableHeaderCell}>Viewer Full Name</th>
-                <th style={styles.tableHeaderCell}>Access Code</th>
-                <th style={styles.tableHeaderCell}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {printSelections.map(selection => (
-                <tr key={selection.selectionId}>
-                  <td style={styles.tableCell}>{selection.selectionId}</td>
-                  <td style={styles.tableCell}>{selection.filename}</td>
-                  <td style={styles.tableCell}>{selection.viewerEmail}</td>
-                  <td style={styles.tableCell}>{selection.viewerFullName}</td>
-                  <td style={styles.tableCell}>{selection.accessCode}</td>
-                  <td style={styles.tableCell}>
-                    <button onClick={() => handleDownloadPhoto(selection.selectionId)} style={styles.downloadButton}>
-                      Download
-                    </button>
-                    <button onClick={() => handleRemoveFromPrint(selection.selectionId)} style={styles.removeButton}>
-                      Remove from Print
-                    </button>
-                  </td>
+          <div style={styles.responsiveTable}>
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th style={styles.tableHeaderCell}>Selection ID</th>
+                  <th style={styles.tableHeaderCell}>Photo Filename</th>
+                  <th style={styles.tableHeaderCell}>Viewer Email</th>
+                  <th style={styles.tableHeaderCell}>Viewer Full Name</th>
+                  <th style={styles.tableHeaderCell}>Access Code</th>
+                  <th style={styles.tableHeaderCell}>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          <button onClick={handleDownloadAllPhotos} style={{...styles.button, marginTop: '20px'}}>
+              </thead>
+              <tbody>
+                {printSelections.map(selection => (
+                  <tr key={selection.selectionId}>
+                    <td style={styles.tableCell} data-label="Selection ID">{selection.selectionId}</td>
+                    <td style={styles.tableCell} data-label="Photo Filename">{selection.filename}</td>
+                    <td style={styles.tableCell} data-label="Viewer Email">{selection.viewerEmail}</td>
+                    <td style={styles.tableCell} data-label="Viewer Full Name">{selection.viewerFullName}</td>
+                    <td style={styles.tableCell} data-label="Access Code">{selection.accessCode}</td>
+                    <td style={styles.tableCell} data-label="Actions">
+                      <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                        <button 
+                          onClick={() => handleDownloadPhoto(selection.selectionId)} 
+                          style={{...styles.button, flex: 1, maxWidth: '120px'}}
+                        >
+                          Download
+                        </button>
+                        <button 
+                          onClick={() => handleRemoveFromPrint(selection.selectionId)} 
+                          style={{...styles.button, flex: 1, maxWidth: '120px', backgroundColor: '#dc3545'}}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <button 
+            onClick={handleDownloadAllPhotos} 
+            style={{...styles.button, marginTop: '20px'}}
+          >
             Download All Selected Photos
           </button>
         </>
