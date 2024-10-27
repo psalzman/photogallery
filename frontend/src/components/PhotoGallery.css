@@ -1,19 +1,103 @@
-@keyframes openAnimation {
-  from { opacity: 0; }
-  to { opacity: 1; }
+.photo-container {
+  position: relative;
+  width: 100%;
+  margin-bottom: 2px;
+  overflow: hidden;
+  background-color: #000;
+  break-inside: avoid;
 }
 
-@keyframes closeAnimation {
-  from { opacity: 1; }
-  to { opacity: 0; }
+.photo {
+  width: 100%;
+  height: auto;
+  display: block;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
 }
 
-@keyframes modalContentOpen {
-  from { transform: scale(0.8); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+.photo:hover {
+  opacity: 0.95;
 }
 
-@keyframes modalContentClose {
-  from { transform: scale(1); opacity: 1; }
-  to { transform: scale(0.8); opacity: 0; }
+.photo-actions {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 50px 15px 15px;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.85) 0%,
+    rgba(0, 0, 0, 0.5) 60%,
+    transparent 100%
+  );
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.photo-container:hover .photo-actions {
+  opacity: 1;
+}
+
+.photo-button {
+  padding: 6px 12px;
+  background-color: rgba(255, 255, 255, 0.12);
+  color: white;
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.photo-button:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.header-buttons {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.logout-button, .download-all-button {
+  padding: 6px 12px;
+  background-color: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: color 0.2s ease;
+}
+
+.logout-button:hover, .download-all-button:hover {
+  color: #ffffff;
+}
+
+@media (max-width: 768px) {
+  .photo-container {
+    margin-bottom: 1px;
+  }
+  
+  .photo-actions {
+    padding: 40px 12px 12px;
+  }
+  
+  .photo-button {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+
+  .header-buttons {
+    gap: 15px;
+  }
 }

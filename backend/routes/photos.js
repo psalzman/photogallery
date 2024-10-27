@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs').promises;
 const sharp = require('sharp');
 const exifReader = require('exif-reader');
+const archiver = require('archiver');
 const db = require('../database');
 const verifyToken = require('../middleware/verifyToken');
 const StorageFactory = require('../services/StorageFactory');
@@ -307,6 +308,68 @@ router.post('/:id/select-print', verifyToken, (req, res) => {
       });
     });
   });
+});
+
+// Download all photos as zip
+router.get('/:accessCode/download-all', verifyToken, async (req, res) => {
+  const accessCode = req.params.accessCode;
+  console.log(`Downloading all photos for access code: ${accessCode}`);
+
+  if (req.user.code !== accessCode) {
+    return res.status(403).json({ error: 'You do not have permission to download these photos' });
+  }
+
+  try {
+    // Get all photos for this access code
+    const photos = await new Promise((resolve, reject) => {
+      db.all('SELECT * FROM photos WHERE access_code = ?', [accessCode], (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      });
+    });
+
+    if (!photos || photos.length === 0) {
+      return res.status(404).json({ error: 'No photos found' });
+    }
+
+    // Create a zip file
+    const archive = archiver('zip', {
+      zlib: { level: 5 } // Compression level
+    });
+
+    // Handle archive errors
+    archive.on('error', (err) => {
+      console.error('Archive error:', err);
+      res.status(500).json({ error: 'Failed to create zip file' });
+    });
+
+    // Set response headers
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename=photos-${accessCode}.zip`);
+
+    // Pipe archive data to response
+    archive.pipe(res);
+
+    // Add each photo to the archive
+    for (const photo of photos) {
+      try {
+        const fileStream = await storageService.getFileStream(accessCode, photo.filename);
+        archive.append(fileStream, { name: photo.filename });
+      } catch (error) {
+        console.error(`Error adding file ${photo.filename} to archive:`, error);
+        // Continue with other files even if one fails
+      }
+    }
+
+    // Finalize archive
+    await archive.finalize();
+    console.log(`Successfully created zip file for access code: ${accessCode}`);
+  } catch (error) {
+    console.error('Error creating zip:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to create zip file' });
+    }
+  }
 });
 
 module.exports = router;

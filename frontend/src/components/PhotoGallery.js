@@ -4,6 +4,106 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 import Slideshow from './Slideshow';
+import './PhotoGallery.css';
+
+const styles = {
+  container: {
+    backgroundColor: '#000000',
+    color: '#ffffff',
+    minHeight: '100vh',
+    padding: '0',
+    margin: '0',
+    boxSizing: 'border-box',
+  },
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '20px 40px',
+    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+    position: 'sticky',
+    top: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    zIndex: 1000,
+    backdropFilter: 'blur(10px)',
+  },
+  headerTitle: {
+    color: '#ffffff',
+    fontSize: '24px',
+    fontWeight: '300',
+    letterSpacing: '2px',
+    margin: 0,
+  },
+  userInfo: {
+    padding: '20px 40px',
+    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#000000',
+  },
+  userName: {
+    fontSize: '18px',
+    fontWeight: '300',
+    marginBottom: '5px',
+  },
+  accessCode: {
+    fontSize: '14px',
+    opacity: 0.7,
+  },
+  error: {
+    backgroundColor: 'rgba(255, 59, 48, 0.1)',
+    color: '#ff3b30',
+    padding: '15px 40px',
+    textAlign: 'center',
+    borderBottom: '1px solid rgba(255, 59, 48, 0.2)',
+  },
+  photoGrid: {
+    columns: '4',
+    columnGap: '2px',
+    padding: '2px 20px',
+    maxWidth: '2000px',
+    margin: '0 auto',
+  },
+  '@media (max-width: 1400px)': {
+    photoGrid: {
+      columns: '3',
+    },
+  },
+  '@media (max-width: 1000px)': {
+    photoGrid: {
+      columns: '2',
+      padding: '2px 10px',
+    },
+  },
+  '@media (max-width: 600px)': {
+    photoGrid: {
+      columns: '1',
+      padding: '1px 5px',
+    },
+    header: {
+      padding: '15px 20px',
+    },
+    headerTitle: {
+      fontSize: '20px',
+    },
+    userInfo: {
+      padding: '15px 20px',
+    },
+    button: {
+      padding: '8px 16px',
+      fontSize: '12px',
+    },
+  logoutButton: {
+    padding: '6px 12px',
+    backgroundColor: 'transparent',
+    color: 'rgba(255, 255, 255, 0.7)',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: '12px',
+    },
+    modalContent: {
+      padding: '20px',
+    },
+  },
+};
 
 function ConfirmationDialog({ isOpen, onClose, onConfirm, photoUrl }) {
   if (!isOpen) return null;
@@ -22,270 +122,6 @@ function ConfirmationDialog({ isOpen, onClose, onConfirm, photoUrl }) {
     </div>
   );
 }
-
-const styles = {
-  container: {
-    backgroundColor: '#1e1e1e',
-    color: '#ffffff',
-    minHeight: '100vh',
-    padding: '40px',
-    boxSizing: 'border-box',
-    maxWidth: '1600px',
-    margin: '0 auto'
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: '40px',
-    backgroundColor: '#333333',
-    padding: '25px 40px',
-    marginLeft: -40,
-    marginRight: -40,
-    borderRadius: '0 0 12px 12px'
-  },
-  headerTitle: {
-    color: '#ffffff',
-    fontSize: '32px',
-    fontWeight: '300',
-    letterSpacing: '2px',
-    margin: 0
-  },
-  userInfo: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: '12px',
-    padding: '40px',
-    marginBottom: '40px',
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-  },
-  userName: {
-    fontSize: '24px',
-    fontWeight: '300',
-    letterSpacing: '1px',
-    marginBottom: '15px'
-  },
-  accessCode: {
-    fontSize: '18px',
-    opacity: 0.8
-  },
-  error: {
-    backgroundColor: 'rgba(255, 59, 48, 0.1)',
-    color: '#ff3b30',
-    padding: '20px',
-    borderRadius: '12px',
-    marginBottom: '30px',
-    textAlign: 'center'
-  },
-  photoGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
-    gap: '40px',
-    padding: '40px',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: '12px',
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-  },
-  photoContainer: {
-    position: 'relative',
-    paddingBottom: '100%',
-    backgroundColor: '#2c2c2c',
-    borderRadius: '12px',
-    overflow: 'hidden',
-    boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
-    transition: 'transform 0.3s ease'
-  },
-  photo: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover',
-    cursor: 'pointer'
-  },
-  selectedOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: '12px'
-  },
-  checkmark: {
-    color: '#ffffff',
-    fontSize: '64px',
-    fontWeight: 'bold',
-    textShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
-  },
-  photoActions: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: '20px',
-    background: 'linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent)',
-    display: 'flex',
-    gap: '10px',
-    flexDirection: 'column'
-  },
-  button: {
-    padding: '12px 20px',
-    backgroundColor: '#333333',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    transition: 'background-color 0.3s ease',
-    fontSize: '16px',
-    fontWeight: '500'
-  },
-  logoutButton: {
-    padding: '12px 24px',
-    backgroundColor: '#333333',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    transition: 'background-color 0.3s ease',
-    fontSize: '16px',
-    fontWeight: '500'
-  },
-  selectedText: {
-    textAlign: 'center',
-    color: '#ffffff',
-    backgroundColor: '#444444',
-    padding: '12px',
-    borderRadius: '8px',
-    fontSize: '16px',
-    fontWeight: '500'
-  },
-  modal: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000
-  },
-  modalContent: {
-    backgroundColor: '#2c2c2c',
-    padding: '40px',
-    borderRadius: '12px',
-    maxWidth: '90%',
-    maxHeight: '90%',
-    position: 'relative',
-    boxShadow: '0 8px 16px rgba(0, 0, 0, 0.3)'
-  },
-  modalImage: {
-    maxWidth: '100%',
-    maxHeight: '80vh',
-    objectFit: 'contain',
-    borderRadius: '8px'
-  },
-  confirmationImage: {
-    maxWidth: '100%',
-    maxHeight: '60vh',
-    objectFit: 'contain',
-    marginBottom: '30px',
-    borderRadius: '8px'
-  },
-  buttonContainer: {
-    display: 'flex',
-    justifyContent: 'center',
-    gap: '20px',
-    marginTop: '30px'
-  },
-  loadingContainer: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: '100vh',
-    fontSize: '18px'
-  },
-  '@media (max-width: 1200px)': {
-    photoGrid: {
-      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-      gap: '30px',
-      padding: '30px'
-    }
-  },
-  '@media (max-width: 768px)': {
-    container: {
-      padding: '20px'
-    },
-    header: {
-      padding: '15px 20px',
-      marginLeft: -20,
-      marginRight: -20,
-      marginBottom: '20px'
-    },
-    headerTitle: {
-      fontSize: '24px'
-    },
-    userInfo: {
-      padding: '20px',
-      marginBottom: '20px'
-    },
-    userName: {
-      fontSize: '18px',
-      marginBottom: '10px'
-    },
-    accessCode: {
-      fontSize: '14px'
-    },
-    photoGrid: {
-      gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-      gap: '15px',
-      padding: '15px'
-    },
-    photoContainer: {
-      borderRadius: '8px',
-      boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)'
-    },
-    selectedOverlay: {
-      borderRadius: '8px'
-    },
-    checkmark: {
-      fontSize: '36px'
-    },
-    photoActions: {
-      padding: '10px'
-    },
-    button: {
-      padding: '8px 16px',
-      fontSize: '14px'
-    },
-    logoutButton: {
-      padding: '8px 16px',
-      fontSize: '14px'
-    },
-    selectedText: {
-      padding: '8px',
-      fontSize: '14px'
-    },
-    modalContent: {
-      padding: '20px'
-    },
-    confirmationImage: {
-      marginBottom: '20px'
-    },
-    buttonContainer: {
-      gap: '15px',
-      marginTop: '20px'
-    },
-    loadingContainer: {
-      fontSize: '16px'
-    }
-  }
-};
 
 function PhotoGallery() {
   const [photos, setPhotos] = useState([]);
@@ -347,6 +183,34 @@ function PhotoGallery() {
     fetchPhotos();
   }, [fetchPhotos]);
 
+  const handleDownloadAll = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/photos/${accessCode}/download-all`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to download photos');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `photos-${accessCode}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading photos:', error);
+      setError('Failed to download photos. Please try again later.');
+    }
+  };
+
   const handleSelectPhoto = (photoId, photoUrl) => {
     setConfirmationDialog({ isOpen: true, photoId, photoUrl });
   };
@@ -354,14 +218,13 @@ function PhotoGallery() {
   const handleConfirmSelection = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post(`${API_BASE_URL}/photos/${confirmationDialog.photoId}/select-print`, {}, {
+      await axios.post(`${API_BASE_URL}/photos/${confirmationDialog.photoId}/select-print`, {}, {
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
           'Content-Type': 'application/json'
         }
       });
-      alert('Photo selected for printing!');
       setConfirmationDialog({ isOpen: false, photoId: null, photoUrl: '' });
       setHasSelectedPhoto(true);
       setPhotos(photos.map(photo => 
@@ -416,7 +279,10 @@ function PhotoGallery() {
     <div style={styles.container}>
       <div style={styles.header}>
         <h1 style={styles.headerTitle}>.l'art pour l'art</h1>
-        <button onClick={handleLogout} style={styles.logoutButton}>Logout</button>
+        <div className="header-buttons">
+          <button onClick={handleDownloadAll} className="download-all-button">Download All</button>
+          <button onClick={handleLogout} className="logout-button">Logout</button>
+        </div>
       </div>
 
       <div style={styles.userInfo}>
@@ -428,11 +294,11 @@ function PhotoGallery() {
 
       <div style={styles.photoGrid}>
         {photos.map((photo, index) => (
-          <div key={photo.id} style={styles.photoContainer}>
+          <div key={photo.id} className="photo-container">
             <img 
               src={photo.thumbnailUrl || photo.imageUrl} 
               alt={photo.filename} 
-              style={styles.photo} 
+              className="photo"
               onClick={() => openSlideshow(index)}
             />
             {photo.selected_for_printing === 1 && (
@@ -440,16 +306,16 @@ function PhotoGallery() {
                 <span style={styles.checkmark}>✓</span>
               </div>
             )}
-            <div style={styles.photoActions}>
+            <div className="photo-actions">
               {!hasSelectedPhoto && photo.selected_for_printing === 0 && (
-                <button onClick={() => handleSelectPhoto(photo.id, photo.imageUrl)} style={styles.button}>
+                <button onClick={() => handleSelectPhoto(photo.id, photo.imageUrl)} className="photo-button">
                   Select for Printing
                 </button>
               )}
               {photo.selected_for_printing === 1 && (
                 <div style={styles.selectedText}>Selected for Printing</div>
               )}
-              <button onClick={() => handleDownload(photo)} style={styles.button}>
+              <button onClick={() => handleDownload(photo)} className="photo-button">
                 Download
               </button>
             </div>
