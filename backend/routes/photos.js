@@ -6,6 +6,7 @@ const fs = require('fs').promises;
 const sharp = require('sharp');
 const exifReader = require('exif-reader');
 const archiver = require('archiver');
+const axios = require('axios');
 const db = require('../database');
 const verifyToken = require('../middleware/verifyToken');
 const StorageFactory = require('../services/StorageFactory');
@@ -337,10 +338,21 @@ router.get('/:accessCode/download-all', verifyToken, async (req, res) => {
       zlib: { level: 5 } // Compression level
     });
 
+    // Handle archive warnings
+    archive.on('warning', function(err) {
+      if (err.code === 'ENOENT') {
+        console.warn('Archive warning:', err);
+      } else {
+        throw err;
+      }
+    });
+
     // Handle archive errors
-    archive.on('error', (err) => {
+    archive.on('error', function(err) {
       console.error('Archive error:', err);
-      res.status(500).json({ error: 'Failed to create zip file' });
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Failed to create zip file' });
+      }
     });
 
     // Set response headers
@@ -353,8 +365,18 @@ router.get('/:accessCode/download-all', verifyToken, async (req, res) => {
     // Add each photo to the archive
     for (const photo of photos) {
       try {
-        const fileStream = await storageService.getFileStream(accessCode, photo.filename);
-        archive.append(fileStream, { name: photo.filename });
+        // Get the signed URL for the photo
+        const signedUrl = await storageService.getFileUrl(accessCode, photo.filename);
+        
+        // Download the file using axios
+        const response = await axios({
+          method: 'get',
+          url: signedUrl,
+          responseType: 'stream'
+        });
+
+        // Add the file to the archive
+        archive.append(response.data, { name: photo.filename });
       } catch (error) {
         console.error(`Error adding file ${photo.filename} to archive:`, error);
         // Continue with other files even if one fails

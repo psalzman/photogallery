@@ -93,6 +93,24 @@ class S3StorageService extends StorageService {
             throw error;
         }
     }
+
+    async getFileStream(accessCode, filename) {
+        const key = `${accessCode}/${filename}`;
+        console.log(`Getting file stream from S3: ${key}`);
+
+        try {
+            const command = new GetObjectCommand({
+                Bucket: this.bucket,
+                Key: key
+            });
+
+            const response = await this.s3Client.send(command);
+            return response.Body;
+        } catch (error) {
+            console.error(`Error getting file stream from S3: ${error.message}`);
+            throw error;
+        }
+    }
 }
 
 module.exports = S3StorageService;

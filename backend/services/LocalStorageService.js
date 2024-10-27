@@ -1,4 +1,5 @@
 const fs = require('fs').promises;
+const fsSync = require('fs');
 const path = require('path');
 const StorageService = require('./StorageService');
 const config = require('../config');
@@ -44,6 +45,20 @@ class LocalStorageService extends StorageService {
 
     async getFileUrl(accessCode, filename) {
         return path.join(this.baseDir, accessCode, filename);
+    }
+
+    async getFileStream(accessCode, filename) {
+        const filePath = path.join(this.baseDir, accessCode, filename);
+        try {
+            // Use synchronous stat to check if file exists before creating stream
+            fsSync.statSync(filePath);
+            return fsSync.createReadStream(filePath);
+        } catch (error) {
+            if (error.code === 'ENOENT') {
+                throw new Error(`File not found: ${filename}`);
+            }
+            throw error;
+        }
     }
 }
 

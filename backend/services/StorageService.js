@@ -14,6 +14,10 @@ class StorageService {
     async getFileUrl(accessCode, filename) {
         throw new Error('Method not implemented');
     }
+
+    async getFileStream(accessCode, filename) {
+        throw new Error('Method not implemented');
+    }
 }
 
 module.exports = StorageService;
