@@ -86,6 +86,34 @@
   color: #ffffff;
 }
 
+.download-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background-color: rgba(255, 255, 255, 0.1);
+  z-index: 2000;
+}
+
+.download-progress-bar {
+  height: 100%;
+  background-color: #ffffff;
+  transition: width 0.3s ease;
+}
+
+.download-progress-text {
+  position: fixed;
+  top: 4px;
+  right: 20px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  padding: 4px 8px;
+  background-color: rgba(0, 0, 0, 0.8);
+  border-radius: 4px;
+  z-index: 2000;
+}
+
 /* Grid Layout */
 .photo-grid {
   display: grid;
@@ -130,5 +158,10 @@
 
   .header-buttons {
     gap: 15px;
+  }
+
+  .download-progress-text {
+    right: 10px;
+    font-size: 11px;
   }
 }

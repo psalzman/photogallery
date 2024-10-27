@@ -131,6 +131,7 @@ function PhotoGallery() {
   const [isLoading, setIsLoading] = useState(true);
   const [modalAnimation, setModalAnimation] = useState('');
   const [slideshowIndex, setSlideshowIndex] = useState(null);
+  const [downloadProgress, setDownloadProgress] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -183,18 +184,35 @@ function PhotoGallery() {
   const handleDownloadAll = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/photos/${accessCode}/download-all`, {
+      setDownloadProgress({ percent: 0, text: 'Starting download...' });
+
+      const response = await axios({
+        method: 'get',
+        url: `${API_BASE_URL}/photos/${accessCode}/download-all`,
         headers: {
           'Authorization': `Bearer ${token}`
+        },
+        responseType: 'blob',
+        onDownloadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setDownloadProgress({
+              percent,
+              text: `Downloading: ${percent}%`
+            });
+          } else {
+            // If total is unknown, show bytes downloaded
+            const mb = Math.round(progressEvent.loaded / 1024 / 1024);
+            setDownloadProgress({
+              percent: null,
+              text: `Downloaded: ${mb} MB`
+            });
+          }
         }
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to download photos');
-      }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      // Create download link
+      const url = window.URL.createObjectURL(response.data);
       const link = document.createElement('a');
       link.href = url;
       link.download = `photos-${accessCode}.zip`;
@@ -202,9 +220,15 @@ function PhotoGallery() {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
+
+      // Clear progress after a short delay
+      setTimeout(() => {
+        setDownloadProgress(null);
+      }, 1000);
     } catch (error) {
       console.error('Error downloading photos:', error);
       setError('Failed to download photos. Please try again later.');
+      setDownloadProgress(null);
     }
   };
 
@@ -274,10 +298,30 @@ function PhotoGallery() {
 
   return (
     <div style={styles.container}>
+      {downloadProgress && (
+        <>
+          <div className="download-progress">
+            <div 
+              className="download-progress-bar" 
+              style={{ width: downloadProgress.percent ? `${downloadProgress.percent}%` : '100%' }}
+            />
+          </div>
+          <div className="download-progress-text">
+            {downloadProgress.text}
+          </div>
+        </>
+      )}
+
       <div style={styles.header}>
         <h1 style={styles.headerTitle}>.l'art pour l'art</h1>
         <div className="header-buttons">
-          <button onClick={handleDownloadAll} className="download-all-button">Download All</button>
+          <button 
+            onClick={handleDownloadAll} 
+            className="download-all-button"
+            disabled={downloadProgress !== null}
+          >
+            Download All
+          </button>
           <button onClick={handleLogout} className="logout-button">Logout</button>
         </div>
       </div>
