@@ -1,16 +1,19 @@
 .photo-container {
   position: relative;
   width: 100%;
+  padding-bottom: 100%; /* Create a square aspect ratio */
   margin-bottom: 2px;
   overflow: hidden;
   background-color: #000;
-  break-inside: avoid;
 }
 
 .photo {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
-  height: auto;
-  display: block;
+  height: 100%;
+  object-fit: cover;
   cursor: pointer;
   transition: opacity 0.2s ease;
 }

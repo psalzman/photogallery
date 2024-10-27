@@ -56,26 +56,27 @@ const styles = {
     borderBottom: '1px solid rgba(255, 59, 48, 0.2)',
   },
   photoGrid: {
-    columns: '4',
-    columnGap: '2px',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+    gap: '2px',
     padding: '2px 20px',
     maxWidth: '2000px',
     margin: '0 auto',
   },
   '@media (max-width: 1400px)': {
     photoGrid: {
-      columns: '3',
+      gridTemplateColumns: 'repeat(3, 1fr)',
     },
   },
   '@media (max-width: 1000px)': {
     photoGrid: {
-      columns: '2',
+      gridTemplateColumns: 'repeat(2, 1fr)',
       padding: '2px 10px',
     },
   },
   '@media (max-width: 600px)': {
     photoGrid: {
-      columns: '1',
+      gridTemplateColumns: '1fr',
       padding: '1px 5px',
     },
     header: {
@@ -91,13 +92,9 @@ const styles = {
       padding: '8px 16px',
       fontSize: '12px',
     },
-  logoutButton: {
-    padding: '6px 12px',
-    backgroundColor: 'transparent',
-    color: 'rgba(255, 255, 255, 0.7)',
-    border: 'none',
-    cursor: 'pointer',
-    fontSize: '12px',
+    logoutButton: {
+      padding: '6px 12px',
+      fontSize: '12px',
     },
     modalContent: {
       padding: '20px',
