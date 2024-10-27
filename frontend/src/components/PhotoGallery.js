@@ -5,73 +5,94 @@ import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 import Slideshow from './Slideshow';
 
+function ConfirmationDialog({ isOpen, onClose, onConfirm, photoUrl }) {
+  if (!isOpen) return null;
+
+  return (
+    <div style={styles.modal}>
+      <div style={styles.modalContent}>
+        <h2 style={styles.headerTitle}>Confirm Photo Selection</h2>
+        <p>Are you sure this is the photo you want printed? Choosing this photo for printing is irreversible.</p>
+        <img src={photoUrl} alt="Selected" style={styles.confirmationImage} />
+        <div style={styles.buttonContainer}>
+          <button onClick={onConfirm} style={styles.button}>Confirm</button>
+          <button onClick={onClose} style={styles.button}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const styles = {
   container: {
     backgroundColor: '#1e1e1e',
     color: '#ffffff',
     minHeight: '100vh',
-    position: 'relative',
-  },
-  headerWrapper: {
-    backgroundColor: '#333333',
+    padding: '40px',
+    boxSizing: 'border-box',
+    maxWidth: '1600px',
+    margin: '0 auto'
   },
   header: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '20px',
-    maxWidth: '1200px',
-    margin: '0 auto',
+    marginBottom: '40px',
+    backgroundColor: '#333333',
+    padding: '25px 40px',
+    marginLeft: -40,
+    marginRight: -40,
+    borderRadius: '0 0 12px 12px'
   },
-  title: {
+  headerTitle: {
     color: '#ffffff',
-    fontSize: '28px',
+    fontSize: '32px',
     fontWeight: '300',
     letterSpacing: '2px',
-    margin: 0,
+    margin: 0
   },
   userInfo: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    padding: '20px',
-    maxWidth: '1200px',
-    margin: '0 auto',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: '12px',
+    padding: '40px',
+    marginBottom: '40px',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
   },
   userName: {
-    color: '#ffffff',
-    fontSize: '22px',
+    fontSize: '24px',
     fontWeight: '300',
     letterSpacing: '1px',
-    marginBottom: '5px',
+    marginBottom: '15px'
   },
   accessCode: {
-    color: '#ffffff',
-    fontSize: '14px',
-    fontWeight: '300',
-    letterSpacing: '1px',
+    fontSize: '18px',
+    opacity: 0.8
   },
   error: {
-    color: '#ff4d4d',
-    textAlign: 'center',
-    marginBottom: '20px',
+    backgroundColor: 'rgba(255, 59, 48, 0.1)',
+    color: '#ff3b30',
+    padding: '20px',
+    borderRadius: '12px',
+    marginBottom: '30px',
+    textAlign: 'center'
   },
   photoGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)',
-    gap: '20px',
-    maxWidth: '1200px',
-    margin: '0 auto',
-    padding: '20px',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
+    gap: '40px',
+    padding: '40px',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: '12px',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
   },
   photoContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  photoWrapper: {
     position: 'relative',
     paddingBottom: '100%',
+    backgroundColor: '#2c2c2c',
+    borderRadius: '12px',
     overflow: 'hidden',
+    boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
+    transition: 'transform 0.3s ease'
   },
   photo: {
     position: 'absolute',
@@ -80,8 +101,7 @@ const styles = {
     width: '100%',
     height: '100%',
     objectFit: 'cover',
-    borderRadius: '4px',
-    cursor: 'pointer',
+    cursor: 'pointer'
   },
   selectedOverlay: {
     position: 'absolute',
@@ -93,43 +113,55 @@ const styles = {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: '4px',
+    borderRadius: '12px'
   },
   checkmark: {
-    color: '#4CAF50',
-    fontSize: '48px',
+    color: '#ffffff',
+    fontSize: '64px',
     fontWeight: 'bold',
+    textShadow: '0 2px 4px rgba(0, 0, 0, 0.2)'
   },
   photoActions: {
-    marginTop: '10px',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: '20px',
+    background: 'linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent)',
+    display: 'flex',
+    gap: '10px',
+    flexDirection: 'column'
   },
   button: {
-    marginTop: '5px',
-    padding: '8px 16px',
+    padding: '12px 20px',
     backgroundColor: '#333333',
     color: 'white',
     border: 'none',
-    borderRadius: '25px',
+    borderRadius: '8px',
     cursor: 'pointer',
     transition: 'background-color 0.3s ease',
-    width: '100%',
-    fontSize: '14px',
+    fontSize: '16px',
+    fontWeight: '500'
   },
   logoutButton: {
-    padding: '10px 20px',
-    backgroundColor: '#1e1e1e',
+    padding: '12px 24px',
+    backgroundColor: '#333333',
     color: 'white',
     border: 'none',
-    borderRadius: '25px',
+    borderRadius: '8px',
     cursor: 'pointer',
     transition: 'background-color 0.3s ease',
-    fontSize: '14px',
+    fontSize: '16px',
+    fontWeight: '500'
   },
   selectedText: {
-    marginTop: '5px',
-    color: '#ffffff',
-    fontWeight: 'bold',
     textAlign: 'center',
+    color: '#ffffff',
+    backgroundColor: '#444444',
+    padding: '12px',
+    borderRadius: '8px',
+    fontSize: '16px',
+    fontWeight: '500'
   },
   modal: {
     position: 'fixed',
@@ -137,56 +169,123 @@ const styles = {
     left: 0,
     width: '100%',
     height: '100%',
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1000,
+    zIndex: 1000
   },
   modalContent: {
     backgroundColor: '#2c2c2c',
-    padding: '20px',
-    borderRadius: '8px',
-    position: 'relative',
+    padding: '40px',
+    borderRadius: '12px',
     maxWidth: '90%',
     maxHeight: '90%',
-    overflow: 'auto',
+    position: 'relative',
+    boxShadow: '0 8px 16px rgba(0, 0, 0, 0.3)'
   },
   modalImage: {
     maxWidth: '100%',
-    maxHeight: '70vh',
+    maxHeight: '80vh',
     objectFit: 'contain',
+    borderRadius: '8px'
   },
   confirmationImage: {
     maxWidth: '100%',
-    maxHeight: '50vh',
+    maxHeight: '60vh',
     objectFit: 'contain',
-    marginBottom: '20px',
+    marginBottom: '30px',
+    borderRadius: '8px'
   },
   buttonContainer: {
     display: 'flex',
-    justifyContent: 'space-around',
-    marginTop: '20px',
+    justifyContent: 'center',
+    gap: '20px',
+    marginTop: '30px'
+  },
+  loadingContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: '100vh',
+    fontSize: '18px'
+  },
+  '@media (max-width: 1200px)': {
+    photoGrid: {
+      gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+      gap: '30px',
+      padding: '30px'
+    }
+  },
+  '@media (max-width: 768px)': {
+    container: {
+      padding: '20px'
+    },
+    header: {
+      padding: '15px 20px',
+      marginLeft: -20,
+      marginRight: -20,
+      marginBottom: '20px'
+    },
+    headerTitle: {
+      fontSize: '24px'
+    },
+    userInfo: {
+      padding: '20px',
+      marginBottom: '20px'
+    },
+    userName: {
+      fontSize: '18px',
+      marginBottom: '10px'
+    },
+    accessCode: {
+      fontSize: '14px'
+    },
+    photoGrid: {
+      gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+      gap: '15px',
+      padding: '15px'
+    },
+    photoContainer: {
+      borderRadius: '8px',
+      boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)'
+    },
+    selectedOverlay: {
+      borderRadius: '8px'
+    },
+    checkmark: {
+      fontSize: '36px'
+    },
+    photoActions: {
+      padding: '10px'
+    },
+    button: {
+      padding: '8px 16px',
+      fontSize: '14px'
+    },
+    logoutButton: {
+      padding: '8px 16px',
+      fontSize: '14px'
+    },
+    selectedText: {
+      padding: '8px',
+      fontSize: '14px'
+    },
+    modalContent: {
+      padding: '20px'
+    },
+    confirmationImage: {
+      marginBottom: '20px'
+    },
+    buttonContainer: {
+      gap: '15px',
+      marginTop: '20px'
+    },
+    loadingContainer: {
+      fontSize: '16px'
+    }
   }
 };
-
-function ConfirmationDialog({ isOpen, onClose, onConfirm, photoUrl }) {
-  if (!isOpen) return null;
-
-  return (
-    <div style={styles.modal}>
-      <div style={styles.modalContent}>
-        <h2>Confirm Photo Selection</h2>
-        <p>Are you sure this is the photo you want printed? Choosing this photo for printing is irreversible.</p>
-        <img src={photoUrl} alt="Selected" style={styles.confirmationImage} />
-        <div style={styles.buttonContainer}>
-          <button onClick={onConfirm} style={styles.button}>Confirm</button>
-          <button onClick={onClose} style={styles.button}>Cancel</button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function PhotoGallery() {
   const [photos, setPhotos] = useState([]);
@@ -203,17 +302,10 @@ function PhotoGallery() {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    console.log('Raw token from localStorage:', token);
-
     if (token) {
       try {
-        // Remove 'Bearer ' prefix for decoding
         const tokenValue = token.startsWith('Bearer ') ? token.slice(7) : token;
-        console.log('Token value for decoding:', tokenValue);
-        
         const decodedToken = jwtDecode(tokenValue);
-        console.log('Decoded token:', decodedToken);
-        
         setAccessCode(decodedToken.code);
         setFullName(decodedToken.fullName || 'User');
       } catch (err) {
@@ -234,8 +326,6 @@ function PhotoGallery() {
 
     try {
       const token = localStorage.getItem('token');
-      console.log('Token for API request:', token);
-      
       const response = await axios.get(`${API_BASE_URL}/photos/${accessCode}`, {
         headers: { 
           'Authorization': `Bearer ${token}`,
@@ -243,12 +333,10 @@ function PhotoGallery() {
           'Content-Type': 'application/json'
         }
       });
-      console.log('Photos response:', response.data);
       setPhotos(response.data.photos);
       setHasSelectedPhoto(response.data.photos.some(photo => photo.selected_for_printing === 1));
     } catch (err) {
       console.error('Error fetching photos:', err);
-      console.error('Error response:', err.response?.data);
       setError('Failed to fetch photos. Please try again later.');
     } finally {
       setIsLoading(false);
@@ -266,7 +354,6 @@ function PhotoGallery() {
   const handleConfirmSelection = async () => {
     try {
       const token = localStorage.getItem('token');
-      console.log('Sending request to select photo for printing:', confirmationDialog.photoId);
       const response = await axios.post(`${API_BASE_URL}/photos/${confirmationDialog.photoId}/select-print`, {}, {
         headers: { 
           'Authorization': `Bearer ${token}`,
@@ -274,7 +361,6 @@ function PhotoGallery() {
           'Content-Type': 'application/json'
         }
       });
-      console.log('Response from select-print:', response.data);
       alert('Photo selected for printing!');
       setConfirmationDialog({ isOpen: false, photoId: null, photoUrl: '' });
       setHasSelectedPhoto(true);
@@ -284,7 +370,7 @@ function PhotoGallery() {
           : { ...photo, selected_for_printing: 0 }
       ));
     } catch (err) {
-      console.error('Error selecting photo for printing:', err.response ? err.response.data : err.message);
+      console.error('Error selecting photo for printing:', err);
       setError('Failed to select photo for printing. Please try again later.');
     }
   };
@@ -294,19 +380,6 @@ function PhotoGallery() {
     localStorage.removeItem('userRole');
     localStorage.removeItem('userEmail');
     navigate('/');
-  };
-
-  const openModal = (photo) => {
-    setSelectedPhoto(photo);
-    setModalAnimation('openAnimation');
-  };
-
-  const closeModal = () => {
-    setModalAnimation('closeAnimation');
-    setTimeout(() => {
-      setSelectedPhoto(null);
-      setModalAnimation('');
-    }, 300);
   };
 
   const handleDownload = async (photo) => {
@@ -336,38 +409,37 @@ function PhotoGallery() {
   };
 
   if (isLoading) {
-    return <div style={styles.container}><p>Loading photos...</p></div>;
+    return <div style={styles.loadingContainer}>Loading photos...</div>;
   }
 
   return (
     <div style={styles.container}>
-      <div style={styles.headerWrapper}>
-        <div style={styles.header}>
-          <h1 style={styles.title}>.l'art pour l'art</h1>
-          <button onClick={handleLogout} style={styles.logoutButton}>Logout</button>
-        </div>
+      <div style={styles.header}>
+        <h1 style={styles.headerTitle}>.l'art pour l'art</h1>
+        <button onClick={handleLogout} style={styles.logoutButton}>Logout</button>
       </div>
+
       <div style={styles.userInfo}>
-        <span style={styles.userName}>{fullName}</span>
-        <span style={styles.accessCode}>Access Code: {accessCode}</span>
+        <div style={styles.userName}>{fullName}</div>
+        <div style={styles.accessCode}>Access Code: {accessCode}</div>
       </div>
-      {error && <p style={styles.error}>{error}</p>}
+
+      {error && <div style={styles.error}>{error}</div>}
+
       <div style={styles.photoGrid}>
         {photos.map((photo, index) => (
           <div key={photo.id} style={styles.photoContainer}>
-            <div style={styles.photoWrapper}>
-              <img 
-                src={photo.thumbnailUrl || photo.imageUrl} 
-                alt={photo.filename} 
-                style={styles.photo} 
-                onClick={() => openSlideshow(index)}
-              />
-              {photo.selected_for_printing === 1 && (
-                <div style={styles.selectedOverlay}>
-                  <span style={styles.checkmark}>✓</span>
-                </div>
-              )}
-            </div>
+            <img 
+              src={photo.thumbnailUrl || photo.imageUrl} 
+              alt={photo.filename} 
+              style={styles.photo} 
+              onClick={() => openSlideshow(index)}
+            />
+            {photo.selected_for_printing === 1 && (
+              <div style={styles.selectedOverlay}>
+                <span style={styles.checkmark}>✓</span>
+              </div>
+            )}
             <div style={styles.photoActions}>
               {!hasSelectedPhoto && photo.selected_for_printing === 0 && (
                 <button onClick={() => handleSelectPhoto(photo.id, photo.imageUrl)} style={styles.button}>
@@ -375,7 +447,7 @@ function PhotoGallery() {
                 </button>
               )}
               {photo.selected_for_printing === 1 && (
-                <p style={styles.selectedText}>Selected for Printing</p>
+                <div style={styles.selectedText}>Selected for Printing</div>
               )}
               <button onClick={() => handleDownload(photo)} style={styles.button}>
                 Download
@@ -384,20 +456,14 @@ function PhotoGallery() {
           </div>
         ))}
       </div>
-      {selectedPhoto && (
-        <div style={{...styles.modal, animation: `${modalAnimation} 0.3s ease-out`}} onClick={closeModal}>
-          <div style={{...styles.modalContent, animation: `${modalAnimation === 'openAnimation' ? 'modalContentOpen' : 'modalContentClose'} 0.3s ease-out`}} onClick={e => e.stopPropagation()}>
-            <img src={selectedPhoto.mediumUrl} alt={selectedPhoto.filename} style={styles.modalImage} />
-            <button onClick={closeModal} style={styles.button}>Close</button>
-          </div>
-        </div>
-      )}
+
       <ConfirmationDialog
         isOpen={confirmationDialog.isOpen}
         onClose={() => setConfirmationDialog({ isOpen: false, photoId: null, photoUrl: '' })}
         onConfirm={handleConfirmSelection}
         photoUrl={confirmationDialog.photoUrl}
       />
+
       {slideshowIndex !== null && (
         <Slideshow
           photos={photos}

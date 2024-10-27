@@ -32,45 +32,49 @@ function AdminDashboard() {
 
   return (
     <div style={styles.container}>
-      <div style={styles.sidebar}>
-        <h2 style={styles.sidebarTitle}>Admin Dashboard</h2>
+      <div style={styles.header}>
+        <h1 style={styles.headerTitle}>Admin Dashboard</h1>
         <button onClick={handleLogout} style={styles.logoutButton}>Logout</button>
       </div>
-      <div style={styles.content}>
-        {error && <p style={styles.error}>{error}</p>}
-        {message && <p style={styles.message}>{message}</p>}
-        
-        <div style={styles.row}>
-          <div style={styles.column}>
-            <ManageAccessCodes 
-              setError={setError} 
-              setMessage={setMessage} 
-              onAccessCodeCreated={handleAccessCodeCreated}
-            />
-          </div>
-          <div style={styles.column}>
-            <AssignAccessCode 
-              setError={setError} 
-              setMessage={setMessage} 
-              onAccessCodeAssigned={handleAccessCodeCreated}
-            />
-          </div>
+
+      {error && <p style={styles.error}>{error}</p>}
+      {message && <p style={styles.message}>{message}</p>}
+      
+      <div style={styles.dashboardGrid}>
+        <div style={styles.dashboardCard}>
+          <ManageAccessCodes 
+            setError={setError} 
+            setMessage={setMessage} 
+            onAccessCodeCreated={handleAccessCodeCreated}
+          />
         </div>
 
-        <div style={styles.row}>
-          <div style={styles.column}>
-            <UploadPhotos 
-              setError={setError} 
-              setMessage={setMessage} 
-              onPhotoUploaded={handlePhotoUploaded}
-            />
-          </div>
-          <div style={styles.column}>
-            <ExistingAccessCodes refreshTrigger={refreshAccessCodes} />
-          </div>
+        <div style={styles.dashboardCard}>
+          <AssignAccessCode 
+            setError={setError} 
+            setMessage={setMessage} 
+            onAccessCodeAssigned={handleAccessCodeCreated}
+          />
         </div>
 
+        <div style={styles.dashboardCard}>
+          <UploadPhotos 
+            setError={setError} 
+            setMessage={setMessage} 
+            onPhotoUploaded={handlePhotoUploaded}
+          />
+        </div>
+      </div>
+
+      <div style={{...styles.dashboardCard, marginTop: '30px'}}>
+        <ExistingAccessCodes refreshTrigger={refreshAccessCodes} />
+      </div>
+
+      <div style={{...styles.dashboardCard, marginTop: '30px'}}>
         <ViewGallery setError={setError} refreshTrigger={refreshGallery} />
+      </div>
+
+      <div style={{...styles.dashboardCard, marginTop: '30px'}}>
         <PrintSelections setError={setError} refreshTrigger={refreshGallery} />
       </div>
     </div>

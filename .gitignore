@@ -136,3 +136,6 @@ dist
 *.jpeg 
 *.png 
 *.PNG 
+
+#database
+backend/photogallery.db

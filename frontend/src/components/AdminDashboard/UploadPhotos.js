@@ -204,7 +204,7 @@ function UploadPhotos({ setError, setMessage, onPhotoUploaded }) {
           required
         />
         <label htmlFor="photo-upload" style={mobileStyles.fileButton}>
-          Select Photos (up to 100)
+          Select Photos
         </label>
         <p style={mobileStyles.selectedFilesText}>
           {selectedFiles.length > 0 ? `${selectedFiles.length} file(s) selected` : 'No files selected'}
