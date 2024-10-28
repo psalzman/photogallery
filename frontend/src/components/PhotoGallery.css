@@ -114,6 +114,15 @@
   z-index: 2000;
 }
 
+.access-code-label {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  padding: 4px 0;
+  text-align: left;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 4px;
+}
+
 /* Grid Layout */
 .photo-grid {
   display: grid;
@@ -163,5 +172,9 @@
   .download-progress-text {
     right: 10px;
     font-size: 11px;
+  }
+
+  .access-code-label {
+    font-size: 10px;
   }
 }

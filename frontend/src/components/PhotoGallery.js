@@ -132,6 +132,7 @@ function PhotoGallery() {
   const [modalAnimation, setModalAnimation] = useState('');
   const [slideshowIndex, setSlideshowIndex] = useState(null);
   const [downloadProgress, setDownloadProgress] = useState(null);
+  const [userRole, setUserRole] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -142,6 +143,7 @@ function PhotoGallery() {
         const decodedToken = jwtDecode(tokenValue);
         setAccessCode(decodedToken.code);
         setFullName(decodedToken.fullName || 'User');
+        setUserRole(decodedToken.role || '');
       } catch (err) {
         console.error('Error decoding token:', err);
         setError('Session expired. Please login again.');
@@ -153,14 +155,18 @@ function PhotoGallery() {
   }, [navigate]);
 
   const fetchPhotos = useCallback(async () => {
-    if (!accessCode) return;
+    if (!accessCode && userRole !== 'viewall') return;
 
     setIsLoading(true);
     setError('');
 
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_BASE_URL}/photos/${accessCode}`, {
+      const endpoint = userRole === 'viewall' ? 
+        `${API_BASE_URL}/photos/all` : 
+        `${API_BASE_URL}/photos/${accessCode}`;
+
+      const response = await axios.get(endpoint, {
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
@@ -175,7 +181,7 @@ function PhotoGallery() {
     } finally {
       setIsLoading(false);
     }
-  }, [accessCode]);
+  }, [accessCode, userRole]);
 
   useEffect(() => {
     fetchPhotos();
@@ -328,7 +334,11 @@ function PhotoGallery() {
 
       <div style={styles.userInfo}>
         <div style={styles.userName}>{fullName}</div>
-        <div style={styles.accessCode}>Access Code: {accessCode}</div>
+        {userRole === 'viewall' ? (
+          <div style={styles.accessCode}>Role: View All Photos</div>
+        ) : (
+          <div style={styles.accessCode}>Access Code: {accessCode}</div>
+        )}
       </div>
 
       {error && <div style={styles.error}>{error}</div>}
@@ -348,7 +358,7 @@ function PhotoGallery() {
               </div>
             )}
             <div className="photo-actions">
-              {!hasSelectedPhoto && photo.selected_for_printing === 0 && (
+              {userRole !== 'viewall' && !hasSelectedPhoto && photo.selected_for_printing === 0 && (
                 <button onClick={() => handleSelectPhoto(photo.id, photo.imageUrl)} className="photo-button">
                   Select for Printing
                 </button>
@@ -359,6 +369,9 @@ function PhotoGallery() {
               <button onClick={() => handleDownload(photo)} className="photo-button">
                 Download
               </button>
+              {userRole === 'viewall' && (
+                <div style={styles.accessCodeLabel}>Access Code: {photo.access_code}</div>
+              )}
             </div>
           </div>
         ))}

@@ -196,10 +196,57 @@ router.post('/upload', verifyToken, (req, res) => {
   });
 });
 
+// Get all photos (for viewall role)
+router.get('/all', verifyToken, (req, res) => {
+  if (req.user.role !== 'viewall') {
+    return res.status(403).json({ error: 'Access denied. Requires viewall role.' });
+  }
+
+  console.log('Fetching all photos');
+
+  db.all('SELECT * FROM photos', [], async (err, rows) => {
+    if (err) {
+      console.error('Error fetching photos:', err);
+      return res.status(500).json({ error: 'Failed to fetch photos' });
+    }
+
+    try {
+      // Add URLs for original, medium, and thumbnail images
+      const photosWithUrls = await Promise.all(rows.map(async (photo) => {
+        const imageUrl = await storageService.getFileUrl(photo.access_code, photo.filename);
+        const thumbnailUrl = await storageService.getFileUrl(photo.access_code, photo.thumbnail_filename);
+        const mediumUrl = await storageService.getFileUrl(photo.access_code, photo.medium_filename);
+        
+        // Parse EXIF data from JSON string
+        const exifData = photo.exif_data ? JSON.parse(photo.exif_data) : null;
+        
+        return {
+          ...photo,
+          imageUrl,
+          thumbnailUrl,
+          mediumUrl,
+          exifData
+        };
+      }));
+
+      console.log(`Found ${photosWithUrls.length} total photos`);
+      res.json({ photos: photosWithUrls });
+    } catch (error) {
+      console.error('Error generating URLs:', error);
+      res.status(500).json({ error: 'Failed to generate photo URLs' });
+    }
+  });
+});
+
 // Get photos for a specific access code
 router.get('/:accessCode', verifyToken, (req, res) => {
   const accessCode = req.params.accessCode;
   console.log('Fetching photos for access code:', accessCode);
+
+  // Allow viewall role to access any photos
+  if (req.user.role !== 'viewall' && req.user.code !== accessCode) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
 
   db.all('SELECT * FROM photos WHERE access_code = ?', [accessCode], async (err, rows) => {
     if (err) {
@@ -316,7 +363,8 @@ router.get('/:accessCode/download-all', verifyToken, async (req, res) => {
   const accessCode = req.params.accessCode;
   console.log(`Downloading all photos for access code: ${accessCode}`);
 
-  if (req.user.code !== accessCode) {
+  // Allow viewall role to download any photos
+  if (req.user.role !== 'viewall' && req.user.code !== accessCode) {
     return res.status(403).json({ error: 'You do not have permission to download these photos' });
   }
 
