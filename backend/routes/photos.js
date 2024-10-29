@@ -243,8 +243,8 @@ router.get('/:accessCode', verifyToken, (req, res) => {
   const accessCode = req.params.accessCode;
   console.log('Fetching photos for access code:', accessCode);
 
-  // Allow viewall role to access any photos
-  if (req.user.role !== 'viewall' && req.user.code !== accessCode) {
+  // Allow admin or viewall roles to access any photos
+  if (req.user.role !== 'admin' && req.user.role !== 'viewall' && req.user.code !== accessCode) {
     return res.status(403).json({ error: 'Access denied' });
   }
 

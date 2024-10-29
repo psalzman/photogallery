@@ -39,6 +39,32 @@ const styles = {
       padding: '5px',
     },
   },
+  deleteButton: {
+    position: 'absolute',
+    top: '10px',
+    right: '10px',
+    width: '30px',
+    height: '30px',
+    borderRadius: '50%',
+    backgroundColor: '#333333',
+    color: 'white',
+    border: 'none',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '18px',
+    transition: 'background-color 0.3s ease',
+    zIndex: 2,
+    '&:hover': {
+      backgroundColor: '#444444',
+    },
+    '@media (max-width: 768px)': {
+      width: '24px',
+      height: '24px',
+      fontSize: '16px',
+    },
+  },
   modalNavButton: {
     position: 'absolute',
     top: '50%',
@@ -219,7 +245,10 @@ function ViewGallery({ setError }) {
               onClick={() => openModal(photo, index)}
             />
             <button 
-              onClick={() => handleDeletePhoto(photo.id)} 
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeletePhoto(photo.id);
+              }} 
               style={styles.deleteButton}
               aria-label="Delete photo"
             >
