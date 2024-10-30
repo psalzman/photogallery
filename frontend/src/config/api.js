@@ -1,6 +1,6 @@
-// In production, use relative path without /api prefix since Apache adds it
+// In production, use the full HTTPS URL to ensure secure connections
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'api'  // Use empty prefix in production since Apache adds /api
-  : 'http://localhost:5001/api';  // In development, backend handles /api prefix
+  ? 'https://dressphotos.devstack.one/api'  // Force HTTPS in production
+  : 'http://localhost:5001/api';  // In development, use HTTP for local testing
 
 export default API_BASE_URL;
