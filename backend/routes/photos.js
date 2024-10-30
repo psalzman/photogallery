@@ -2,7 +2,8 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs').promises;
+const fs = require('fs');  // Use regular fs for createWriteStream
+const fsPromises = require('fs').promises;  // Use promises for async operations
 const sharp = require('sharp');
 const exifReader = require('exif-reader');
 const archiver = require('archiver');
@@ -13,7 +14,13 @@ const StorageFactory = require('../services/StorageFactory');
 const config = require('../config');
 
 const tempUploadDir = path.join(__dirname, '..', config.storage.local.tempDir);
-fs.mkdir(tempUploadDir, { recursive: true }).catch(console.error);
+const chunksDir = path.join(tempUploadDir, 'chunks');
+
+// Ensure temp directories exist
+Promise.all([
+  fsPromises.mkdir(tempUploadDir, { recursive: true }),
+  fsPromises.mkdir(chunksDir, { recursive: true })
+]).catch(console.error);
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -28,6 +35,40 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 const storageService = StorageFactory.getStorage();
 
+// Serve photo files
+router.get('/file/:accessCode/:filename', verifyToken, async (req, res) => {
+  const { accessCode, filename } = req.params;
+
+  // Check if user has access to this photo
+  if (req.user.role !== 'admin' && req.user.role !== 'viewall' && req.user.code !== accessCode) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+
+  try {
+    // Get the actual file path
+    const filePath = storageService.getFilePath(accessCode, filename);
+    
+    // Set content type based on file extension
+    const ext = path.extname(filename).toLowerCase();
+    const contentType = {
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png',
+      '.gif': 'image/gif',
+      '.webp': 'image/webp'
+    }[ext] || 'application/octet-stream';
+    
+    res.setHeader('Content-Type', contentType);
+    
+    // Stream the file
+    const stream = await storageService.getFileStream(accessCode, filename);
+    stream.pipe(res);
+  } catch (error) {
+    console.error('Error serving file:', error);
+    res.status(404).json({ error: 'File not found' });
+  }
+});
+
 // Extract detailed EXIF data
 const extractExifData = async (buffer) => {
   try {
@@ -36,17 +77,13 @@ const extractExifData = async (buffer) => {
 
     if (metadata.exif) {
       try {
-        // Get raw EXIF data without filtering
         exifData = exifReader(metadata.exif);
-        console.log('Raw EXIF data:', JSON.stringify(exifData, null, 2));
       } catch (exifError) {
         console.error('Error parsing EXIF data:', exifError);
       }
     }
 
-    // Combine Sharp metadata with complete EXIF data
     const combinedMetadata = {
-      // Sharp metadata
       format: metadata.format,
       width: metadata.width,
       height: metadata.height,
@@ -59,9 +96,7 @@ const extractExifData = async (buffer) => {
       hasProfile: metadata.hasProfile,
       hasAlpha: metadata.hasAlpha,
       orientation: metadata.orientation,
-      // Complete EXIF data
       exif: exifData,
-      // Store raw buffer for potential future parsing
       rawExif: metadata.exif ? metadata.exif.toString('base64') : null
     };
 
@@ -74,16 +109,12 @@ const extractExifData = async (buffer) => {
 
 // Create thumbnail and medium-sized image
 const createResizedImages = async (buffer) => {
-  // Get EXIF and other metadata
   const metadata = await extractExifData(buffer);
-  console.log('Combined metadata:', metadata);
 
-  // Create sharp instance with auto-orientation enabled
   const image = sharp(buffer, { failOnError: false })
-    .rotate() // This automatically rotates based on EXIF orientation
-    .withMetadata(); // Preserve metadata except orientation
+    .rotate()
+    .withMetadata();
 
-  // Create thumbnail
   const thumbnail = await image
     .clone()
     .resize(500, 500, { 
@@ -92,7 +123,6 @@ const createResizedImages = async (buffer) => {
     })
     .toBuffer();
 
-  // Create medium-sized image
   const medium = await image
     .clone()
     .resize(2000, null, { 
@@ -101,7 +131,6 @@ const createResizedImages = async (buffer) => {
     })
     .toBuffer();
 
-  // Process original image to correct orientation but maintain full size
   const original = await image
     .clone()
     .toBuffer();
@@ -109,16 +138,201 @@ const createResizedImages = async (buffer) => {
   return { thumbnail, medium, original, metadata };
 };
 
-// Upload photos
-router.post('/upload', verifyToken, (req, res) => {
-  console.log('Upload route hit');
-  
-  upload.array('photos', 100)(req, res, async function (err) {
-    if (err) {
-      console.error('Error uploading files:', err);
-      return res.status(500).json({ error: 'Failed to upload files', message: err.message });
+// Handle chunked upload
+const chunkStorage = multer.diskStorage({
+  destination: async function (req, file, cb) {
+    try {
+      await fsPromises.mkdir(chunksDir, { recursive: true });
+      cb(null, chunksDir);
+    } catch (error) {
+      cb(error);
+    }
+  },
+  filename: function (req, file, cb) {
+    // Generate a temporary unique name
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, `temp-${uniqueSuffix}`);
+  }
+});
+
+const chunkUpload = multer({ storage: chunkStorage });
+
+// Upload chunk endpoint
+router.post('/upload-chunk', verifyToken, async (req, res) => {
+  try {
+    // Handle the upload
+    await new Promise((resolve, reject) => {
+      chunkUpload.single('chunk')(req, res, (err) => {
+        if (err) {
+          console.error('Multer error:', err);
+          reject(err);
+        } else {
+          resolve();
+        }
+      });
+    });
+
+    if (!req.file) {
+      throw new Error('No chunk file received');
     }
 
+    // Parse metadata
+    const [chunkIndex, totalChunks, isLastChunk, fileSize] = (req.body.metadata || '').split('_');
+    const filename = req.body.filename;
+    const currentChunk = parseInt(chunkIndex);
+    const totalChunksNum = parseInt(totalChunks);
+    const isLastChunkBool = isLastChunk === 'true';
+    const accessCode = req.body.accessCode;
+
+    // Rename the temp file to the proper chunk name
+    const tempPath = req.file.path;
+    const finalChunkPath = path.join(chunksDir, `${filename}.part${currentChunk}`);
+    await fsPromises.rename(tempPath, finalChunkPath);
+
+    console.log('Processing chunk upload:', {
+      filename,
+      chunkIndex: currentChunk,
+      totalChunks: totalChunksNum,
+      isLastChunk: isLastChunkBool,
+      fileSize: parseInt(fileSize),
+      receivedFile: 'yes'
+    });
+
+    console.log(`Processing chunk ${currentChunk + 1}/${totalChunksNum} for ${filename}`);
+
+    // If this is the last chunk, process the complete file
+    if (isLastChunkBool) {
+      console.log('Processing final chunk, combining all chunks...');
+
+      // Create final file
+      const finalPath = path.join(tempUploadDir, filename);
+      const writeStream = fs.createWriteStream(finalPath);
+
+      // First read all chunks into memory
+      const chunkBuffers = [];
+      let totalSize = 0;
+
+      for (let i = 0; i < totalChunksNum; i++) {
+        const chunkPath = path.join(chunksDir, `${filename}.part${i}`);
+        try {
+          console.log(`Reading chunk ${i + 1}/${totalChunksNum} from ${chunkPath}`);
+          const chunkBuffer = await fsPromises.readFile(chunkPath);
+          chunkBuffers.push(chunkBuffer);
+          totalSize += chunkBuffer.length;
+          console.log(`Chunk ${i + 1} size: ${chunkBuffer.length} bytes`);
+        } catch (error) {
+          console.error(`Error reading chunk ${i + 1}:`, error);
+          throw error;
+        }
+      }
+
+      // Write all chunks to final file
+      for (let i = 0; i < chunkBuffers.length; i++) {
+        await new Promise((resolve, reject) => {
+          writeStream.write(chunkBuffers[i], (error) => {
+            if (error) {
+              console.error(`Error writing chunk ${i + 1}:`, error);
+              reject(error);
+            } else {
+              console.log(`Successfully wrote chunk ${i + 1}`);
+              resolve();
+            }
+          });
+        });
+      }
+
+      // Close the write stream
+      await new Promise((resolve, reject) => {
+        writeStream.end((error) => {
+          if (error) {
+            console.error('Error closing write stream:', error);
+            reject(error);
+          } else {
+            console.log('Successfully closed write stream');
+            resolve();
+          }
+        });
+      });
+
+      // Clean up chunk files
+      for (let i = 0; i < totalChunksNum; i++) {
+        const chunkPath = path.join(chunksDir, `${filename}.part${i}`);
+        await fsPromises.unlink(chunkPath).catch(console.error);
+        console.log(`Deleted chunk file: ${chunkPath}`);
+      }
+
+      // Verify the final file size
+      const stats = await fsPromises.stat(finalPath);
+      console.log('Final file stats:', {
+        expectedSize: parseInt(fileSize),
+        actualSize: stats.size,
+        totalChunkSize: totalSize
+      });
+
+      if (stats.size !== parseInt(fileSize)) {
+        throw new Error(`File size mismatch after combining chunks. Expected ${fileSize}, got ${stats.size}`);
+      }
+
+      try {
+        console.log('Processing complete file...');
+        // Process the complete file
+        const fileBuffer = await fsPromises.readFile(finalPath);
+        const finalFilename = `${Date.now()}-${filename}`;
+        const { thumbnail, medium, original, metadata } = await createResizedImages(fileBuffer);
+        const thumbnailFilename = `thumb_${finalFilename}`;
+        const mediumFilename = `medium_${finalFilename}`;
+
+        console.log('Uploading files to storage...');
+        // Upload files to storage
+        await Promise.all([
+          storageService.uploadBuffer(original, accessCode, finalFilename),
+          storageService.uploadBuffer(thumbnail, accessCode, thumbnailFilename),
+          storageService.uploadBuffer(medium, accessCode, mediumFilename)
+        ]);
+
+        // Clean up temp file
+        await fsPromises.unlink(finalPath);
+        console.log('Cleaned up temporary files');
+
+        console.log('Saving to database...');
+        // Save to database
+        await new Promise((resolve, reject) => {
+          const exifData = JSON.stringify(metadata);
+          db.run(
+            'INSERT INTO photos (filename, thumbnail_filename, medium_filename, access_code, exif_data) VALUES (?, ?, ?, ?, ?)',
+            [finalFilename, thumbnailFilename, mediumFilename, accessCode, exifData],
+            function(err) {
+              if (err) {
+                console.error('Database error:', err);
+                reject(err);
+              } else {
+                console.log('Successfully saved to database');
+                resolve(this.lastID);
+              }
+            }
+          );
+        });
+
+        console.log('Upload completed successfully');
+        res.json({ message: 'File upload completed' });
+      } catch (error) {
+        console.error('Error processing complete file:', error);
+        throw error;
+      }
+    } else {
+      // Not the last chunk, just acknowledge receipt
+      console.log(`Successfully received chunk ${currentChunk + 1}/${totalChunksNum}`);
+      res.json({ message: 'Chunk received' });
+    }
+  } catch (error) {
+    console.error('Error handling chunk:', error);
+    res.status(500).json({ error: 'Failed to process chunk', details: error.message });
+  }
+});
+
+// Legacy upload endpoint
+router.post('/upload', verifyToken, upload.array('photos', 100), async (req, res) => {
+  try {
     const accessCode = req.body.accessCode;
     console.log('Access Code:', accessCode);
 
@@ -139,7 +353,7 @@ router.post('/upload', verifyToken, (req, res) => {
     const insertPromises = uploadedFiles.map(async (file) => {
       try {
         const finalFilename = `${Date.now()}-${file.originalname}`;
-        const fileBuffer = await fs.readFile(file.path);
+        const fileBuffer = await fsPromises.readFile(file.path);
         const { thumbnail, medium, original, metadata } = await createResizedImages(fileBuffer);
         const thumbnailFilename = `thumb_${finalFilename}`;
         const mediumFilename = `medium_${finalFilename}`;
@@ -147,20 +361,17 @@ router.post('/upload', verifyToken, (req, res) => {
         console.log(`Processing file: ${finalFilename}`);
         console.log('Full metadata:', metadata);
 
-        // Upload orientation-corrected original file
-        await storageService.uploadBuffer(original, accessCode, finalFilename);
-        console.log(`Uploaded original file: ${finalFilename}`);
+        // Upload files to storage
+        await Promise.all([
+          storageService.uploadBuffer(original, accessCode, finalFilename),
+          storageService.uploadBuffer(thumbnail, accessCode, thumbnailFilename),
+          storageService.uploadBuffer(medium, accessCode, mediumFilename)
+        ]);
+
+        console.log(`Uploaded all versions of: ${finalFilename}`);
         
-        // Upload thumbnail
-        await storageService.uploadBuffer(thumbnail, accessCode, thumbnailFilename);
-        console.log(`Uploaded thumbnail: ${thumbnailFilename}`);
-
-        // Upload medium-sized image
-        await storageService.uploadBuffer(medium, accessCode, mediumFilename);
-        console.log(`Uploaded medium image: ${mediumFilename}`);
-
         // Clean up temp file
-        await fs.unlink(file.path).catch(err => {
+        await fsPromises.unlink(file.path).catch(err => {
           console.warn(`Warning: Could not delete temp file ${file.path}:`, err);
         });
 
@@ -185,15 +396,13 @@ router.post('/upload', verifyToken, (req, res) => {
       }
     });
 
-    try {
-      await Promise.all(insertPromises);
-      console.log('All photos inserted into database');
-      res.status(201).json({ message: 'Photos uploaded successfully', count: uploadedFiles.length });
-    } catch (err) {
-      console.error('Error uploading photos:', err);
-      res.status(500).json({ error: 'Failed to upload photos', details: err.message });
-    }
-  });
+    await Promise.all(insertPromises);
+    console.log('All photos inserted into database');
+    res.status(201).json({ message: 'Photos uploaded successfully', count: uploadedFiles.length });
+  } catch (err) {
+    console.error('Error uploading photos:', err);
+    res.status(500).json({ error: 'Failed to upload photos', details: err.message });
+  }
 });
 
 // Get all photos (for viewall role)
@@ -217,7 +426,6 @@ router.get('/all', verifyToken, (req, res) => {
         const thumbnailUrl = await storageService.getFileUrl(photo.access_code, photo.thumbnail_filename);
         const mediumUrl = await storageService.getFileUrl(photo.access_code, photo.medium_filename);
         
-        // Parse EXIF data from JSON string
         const exifData = photo.exif_data ? JSON.parse(photo.exif_data) : null;
         
         return {
@@ -261,7 +469,6 @@ router.get('/:accessCode', verifyToken, (req, res) => {
         const thumbnailUrl = await storageService.getFileUrl(accessCode, photo.thumbnail_filename);
         const mediumUrl = await storageService.getFileUrl(accessCode, photo.medium_filename);
         
-        // Parse EXIF data from JSON string
         const exifData = photo.exif_data ? JSON.parse(photo.exif_data) : null;
         
         return {
@@ -299,9 +506,11 @@ router.delete('/:id', verifyToken, (req, res) => {
     try {
       console.log(`Deleting files for photo ${photoId}`);
       // Delete original, medium, and thumbnail from storage
-      await storageService.deleteFile(row.access_code, row.filename);
-      await storageService.deleteFile(row.access_code, row.thumbnail_filename);
-      await storageService.deleteFile(row.access_code, row.medium_filename);
+      await Promise.all([
+        storageService.deleteFile(row.access_code, row.filename),
+        storageService.deleteFile(row.access_code, row.thumbnail_filename),
+        storageService.deleteFile(row.access_code, row.medium_filename)
+      ]);
 
       db.run('DELETE FROM photos WHERE id = ?', [photoId], function(deleteErr) {
         if (deleteErr) {
@@ -383,10 +592,9 @@ router.get('/:accessCode/download-all', verifyToken, async (req, res) => {
 
     // Create a zip file
     const archive = archiver('zip', {
-      zlib: { level: 5 } // Compression level
+      zlib: { level: 5 }
     });
 
-    // Handle archive warnings
     archive.on('warning', function(err) {
       if (err.code === 'ENOENT') {
         console.warn('Archive warning:', err);
@@ -395,7 +603,6 @@ router.get('/:accessCode/download-all', verifyToken, async (req, res) => {
       }
     });
 
-    // Handle archive errors
     archive.on('error', function(err) {
       console.error('Archive error:', err);
       if (!res.headersSent) {
@@ -403,35 +610,27 @@ router.get('/:accessCode/download-all', verifyToken, async (req, res) => {
       }
     });
 
-    // Set response headers
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader('Content-Disposition', `attachment; filename=photos-${accessCode}.zip`);
 
-    // Pipe archive data to response
     archive.pipe(res);
 
-    // Add each photo to the archive
     for (const photo of photos) {
       try {
-        // Get the signed URL for the photo
         const signedUrl = await storageService.getFileUrl(accessCode, photo.filename);
         
-        // Download the file using axios
         const response = await axios({
           method: 'get',
           url: signedUrl,
           responseType: 'stream'
         });
 
-        // Add the file to the archive
         archive.append(response.data, { name: photo.filename });
       } catch (error) {
         console.error(`Error adding file ${photo.filename} to archive:`, error);
-        // Continue with other files even if one fails
       }
     }
 
-    // Finalize archive
     await archive.finalize();
     console.log(`Successfully created zip file for access code: ${accessCode}`);
   } catch (error) {

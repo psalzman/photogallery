@@ -4,12 +4,14 @@ const helmet = require('helmet');
 const compression = require('compression');
 const morgan = require('morgan');
 const bodyParser = require('body-parser');
+const path = require('path');
 const authRoutes = require('./routes/auth');
 const accessCodeRoutes = require('./routes/accessCodes');
 const photoRoutes = require('./routes/photos');
 const printSelectionRoutes = require('./routes/printSelections');
 const db = require('./database');
 const setupAdminAccount = require('./setupAdminAccount');
+const verifyToken = require('./middleware/verifyToken');
 
 const app = express();
 const port = 5001;
@@ -49,8 +51,15 @@ app.use('/api/access-codes', accessCodeRoutes);
 app.use('/api/photos', photoRoutes);
 app.use('/api/print-selections', printSelectionRoutes);
 
-// Static file serving
-app.use('/photo-uploads', express.static('photo-uploads'));
+// Serve photo uploads with authentication
+app.use('/photo-uploads/:accessCode', verifyToken, (req, res, next) => {
+  const accessCode = req.params.accessCode;
+  // Check if user has access to these photos
+  if (req.user.role !== 'admin' && req.user.role !== 'viewall' && req.user.code !== accessCode) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+  next();
+}, express.static(path.join(__dirname, 'photo-uploads')));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

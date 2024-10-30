@@ -44,7 +44,8 @@ class LocalStorageService extends StorageService {
     }
 
     async getFileUrl(accessCode, filename) {
-        return path.join(this.baseDir, accessCode, filename);
+        // Return a URL path that matches the static file serving
+        return `/photo-uploads/${accessCode}/${filename}`;
     }
 
     async getFileStream(accessCode, filename) {
@@ -59,6 +60,10 @@ class LocalStorageService extends StorageService {
             }
             throw error;
         }
+    }
+
+    getFilePath(accessCode, filename) {
+        return path.join(this.baseDir, accessCode, filename);
     }
 }
 

@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from 'react';
-import axios from 'axios';
+import React, { useState, useCallback, useRef } from 'react';
 import styles from './styles';
 import API_BASE_URL from '../../config/api';
+import QueueUpload from '../../services/QueueUpload';
 
 function ProgressBar({ progress }) {
   const mobileStyles = {
@@ -28,12 +28,24 @@ function ProgressBar({ progress }) {
   );
 }
 
+function FileProgressItem({ filename, progress }) {
+  return (
+    <div style={styles.fileProgressItem}>
+      <span style={styles.filename}>{filename}</span>
+      <ProgressBar progress={progress} />
+    </div>
+  );
+}
+
 function UploadPhotos({ setError, setMessage, onPhotoUploaded }) {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [selectedAccessCode, setSelectedAccessCode] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [fileProgresses, setFileProgresses] = useState({});
   const [accessCodeSearchQuery, setAccessCodeSearchQuery] = useState('');
   const [accessCodeSearchResults, setAccessCodeSearchResults] = useState([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const uploadQueueRef = useRef(null);
 
   const handleFileSelect = useCallback((e) => {
     const files = Array.from(e.target.files);
@@ -42,52 +54,65 @@ function UploadPhotos({ setError, setMessage, onPhotoUploaded }) {
       return;
     }
     setSelectedFiles(files);
-  }, []);
+    setFileProgresses({});
+  }, [setError]);
 
   const handlePhotoUpload = useCallback(async () => {
-    setError('');
-    setMessage('');
-    setUploadProgress(0);
-
     if (selectedFiles.length === 0 || !selectedAccessCode) {
       setError('Please select photos (up to 100) and an access code.');
       return;
     }
 
-    try {
-      const token = localStorage.getItem('token');
-      const formData = new FormData();
-      selectedFiles.forEach((file) => {
-        formData.append(`photos`, file);
-      });
-      formData.append('accessCode', selectedAccessCode);
+    setError('');
+    setMessage('');
+    setUploadProgress(0);
+    setIsUploading(true);
 
-      const response = await axios.post(`${API_BASE_URL}/photos/upload`, formData, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data'
+    try {
+      // Initialize QueueUpload if not already done
+      if (!uploadQueueRef.current) {
+        uploadQueueRef.current = new QueueUpload();
+      }
+
+      const uploader = uploadQueueRef.current;
+
+      // Set up callbacks
+      uploader.setCallbacks({
+        onProgress: (progress) => {
+          setUploadProgress(progress);
         },
-        onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          setUploadProgress(percentCompleted);
+        onFileProgress: (file, progress) => {
+          setFileProgresses(prev => ({
+            ...prev,
+            [file.name]: progress
+          }));
+        },
+        onComplete: () => {
+          setMessage('Photos uploaded successfully.');
+          setSelectedFiles([]);
+          setSelectedAccessCode('');
+          setUploadProgress(0);
+          setFileProgresses({});
+          setIsUploading(false);
+          if (onPhotoUploaded) {
+            onPhotoUploaded();
+          }
+        },
+        onError: (error, file) => {
+          console.error('Error uploading file:', file.name, error);
+          setError(`Error uploading ${file.name}: ${error.message}`);
+          setIsUploading(false);
         }
       });
 
-      setMessage('Photos uploaded successfully.');
-      setSelectedFiles([]);
-      setSelectedAccessCode('');
-      setUploadProgress(0);
-      if (onPhotoUploaded) {
-        onPhotoUploaded();
-      }
+      // Add files to queue and start processing
+      uploader.addFiles(selectedFiles, selectedAccessCode);
+      await uploader.processQueue();
+
     } catch (err) {
       console.error('Error uploading photos:', err);
-      if (err.response && err.response.data && err.response.data.error) {
-        setError(err.response.data.error);
-      } else {
-        setError('An unexpected error occurred while uploading photos. Please try again.');
-      }
-      setUploadProgress(0);
+      setError('An unexpected error occurred while uploading photos. Please try again.');
+      setIsUploading(false);
     }
   }, [selectedFiles, selectedAccessCode, setError, setMessage, onPhotoUploaded]);
 
@@ -101,15 +126,15 @@ function UploadPhotos({ setError, setMessage, onPhotoUploaded }) {
     }
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_BASE_URL}/access-codes/search-codes?query=${query}`, {
+      const response = await fetch(`${API_BASE_URL}/access-codes/search-codes?query=${query}`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Accept': 'application/json',
           'Content-Type': 'application/json'
         }
       });
-      setAccessCodeSearchResults(response.data.results);
+      const data = await response.json();
+      setAccessCodeSearchResults(data.results);
     } catch (err) {
       console.error('Error searching for access codes:', err);
     }
@@ -164,6 +189,11 @@ function UploadPhotos({ setError, setMessage, onPhotoUploaded }) {
         marginTop: '8px',
       },
     },
+    fileProgressList: {
+      marginTop: '20px',
+      maxHeight: '200px',
+      overflowY: 'auto',
+    }
   };
 
   return (
@@ -202,15 +232,41 @@ function UploadPhotos({ setError, setMessage, onPhotoUploaded }) {
           onChange={handleFileSelect}
           style={styles.fileInput}
           required
+          disabled={isUploading}
         />
-        <label htmlFor="photo-upload" style={mobileStyles.fileButton}>
+        <label htmlFor="photo-upload" style={{
+          ...mobileStyles.fileButton,
+          opacity: isUploading ? 0.6 : 1,
+          cursor: isUploading ? 'not-allowed' : 'pointer'
+        }}>
           Select Photos
         </label>
         <p style={mobileStyles.selectedFilesText}>
           {selectedFiles.length > 0 ? `${selectedFiles.length} file(s) selected` : 'No files selected'}
         </p>
-        <button onClick={handlePhotoUpload} style={mobileStyles.button}>Upload Photos</button>
-        {uploadProgress > 0 && <ProgressBar progress={uploadProgress} />}
+        <button 
+          onClick={handlePhotoUpload} 
+          style={{
+            ...mobileStyles.button,
+            opacity: isUploading ? 0.6 : 1,
+            cursor: isUploading ? 'not-allowed' : 'pointer'
+          }}
+          disabled={isUploading}
+        >
+          {isUploading ? 'Uploading...' : 'Upload Photos'}
+        </button>
+        
+        {uploadProgress > 0 && (
+          <div style={mobileStyles.fileProgressList}>
+            {Object.entries(fileProgresses).map(([filename, progress]) => (
+              <FileProgressItem
+                key={filename}
+                filename={filename}
+                progress={progress}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </>
   );
