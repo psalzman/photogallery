@@ -1,7 +1,7 @@
 import API_BASE_URL from '../config/api';
 
 class QueueUpload {
-  constructor(chunkSize = 1024 * 1024) { // 1MB chunks by default
+  constructor(chunkSize = 512 * 1024) { // Reduced to 512KB chunks by default
     this.queue = [];
     this.isProcessing = false;
     this.chunkSize = chunkSize;
@@ -10,7 +10,7 @@ class QueueUpload {
     this.onComplete = null;
     this.onError = null;
     this.maxRetries = 3;
-    this.baseDelay = 200; // Increased base delay between chunks
+    this.baseDelay = 500; // Increased base delay between chunks
   }
 
   addFiles(files, accessCode) {
@@ -58,7 +58,7 @@ class QueueUpload {
     try {
       // Exponential backoff delay between retries
       if (retryCount > 0) {
-        const backoffDelay = Math.min(this.baseDelay * Math.pow(2, retryCount - 1), 5000);
+        const backoffDelay = Math.min(this.baseDelay * Math.pow(2, retryCount - 1), 10000);
         await this.sleep(backoffDelay);
       }
 
@@ -70,14 +70,32 @@ class QueueUpload {
         body: formData
       });
 
+      // Handle non-200 responses
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || errorData.details || `Upload failed: ${response.statusText}`);
+        let errorMessage;
+        try {
+          // Try to parse error as JSON
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorData.details || `Upload failed: ${response.statusText}`;
+        } catch (e) {
+          // If response is not JSON (e.g., HTML error page)
+          const text = await response.text();
+          errorMessage = `Server error (${response.status}): ${text.substring(0, 100)}...`;
+        }
+        throw new Error(errorMessage);
       }
 
-      const result = await response.json();
+      // Ensure response is valid JSON
+      let result;
+      try {
+        result = await response.json();
+      } catch (e) {
+        throw new Error('Invalid JSON response from server');
+      }
+
       console.log(`Chunk ${chunkIndex + 1}/${totalChunks} uploaded successfully:`, result);
       return result;
+
     } catch (error) {
       console.error(`Error uploading chunk ${chunkIndex + 1}/${totalChunks}:`, error);
       
@@ -85,7 +103,9 @@ class QueueUpload {
       if (retryCount < this.maxRetries && (
           error.message.includes('SSL') || 
           error.message.includes('network') ||
-          error.message.includes('fetch'))) {
+          error.message.includes('fetch') ||
+          error.message.includes('Server error') ||
+          error.message.includes('Invalid JSON'))) {
         console.log(`Retrying chunk ${chunkIndex + 1}/${totalChunks}, attempt ${retryCount + 1}/${this.maxRetries}`);
         return this.uploadChunkWithRetry(formData, chunkIndex, totalChunks, file, retryCount + 1);
       }
@@ -122,7 +142,7 @@ class QueueUpload {
       try {
         // Wait between chunks with increasing delay for larger files
         if (chunkIndex > 0) {
-          const dynamicDelay = this.baseDelay + (Math.floor(chunkIndex / 5) * 100); // Increase delay every 5 chunks
+          const dynamicDelay = this.baseDelay + (Math.floor(chunkIndex / 3) * 200); // Increase delay every 3 chunks
           await this.sleep(dynamicDelay);
         }
 
