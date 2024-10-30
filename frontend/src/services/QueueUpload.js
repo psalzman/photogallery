@@ -1,7 +1,7 @@
 import API_BASE_URL from '../config/api';
 
 class QueueUpload {
-  constructor(chunkSize = 512 * 1024) { // Reduced to 512KB chunks by default
+  constructor(chunkSize = 512 * 1024) { // 512KB chunks
     this.queue = [];
     this.isProcessing = false;
     this.chunkSize = chunkSize;
@@ -10,7 +10,7 @@ class QueueUpload {
     this.onComplete = null;
     this.onError = null;
     this.maxRetries = 3;
-    this.baseDelay = 500; // Increased base delay between chunks
+    this.baseDelay = 500;
   }
 
   addFiles(files, accessCode) {
@@ -70,6 +70,9 @@ class QueueUpload {
         body: formData
       });
 
+      // Clone the response for potential error handling
+      const responseClone = response.clone();
+
       // Handle non-200 responses
       if (!response.ok) {
         let errorMessage;
@@ -78,19 +81,25 @@ class QueueUpload {
           const errorData = await response.json();
           errorMessage = errorData.error || errorData.details || `Upload failed: ${response.statusText}`;
         } catch (e) {
-          // If response is not JSON (e.g., HTML error page)
-          const text = await response.text();
-          errorMessage = `Server error (${response.status}): ${text.substring(0, 100)}...`;
+          // If response is not JSON, use the cloned response for text
+          const text = await responseClone.text();
+          if (response.status === 520) {
+            errorMessage = 'Server is temporarily overloaded. Please try again later.';
+          } else {
+            errorMessage = `Server error (${response.status}): ${text.substring(0, 100)}...`;
+          }
         }
         throw new Error(errorMessage);
       }
 
-      // Ensure response is valid JSON
+      // Parse the response as JSON
       let result;
       try {
         result = await response.json();
       } catch (e) {
-        throw new Error('Invalid JSON response from server');
+        // If JSON parsing fails, use the cloned response for error details
+        const text = await responseClone.text();
+        throw new Error(`Invalid server response: ${text.substring(0, 100)}...`);
       }
 
       console.log(`Chunk ${chunkIndex + 1}/${totalChunks} uploaded successfully:`, result);
@@ -99,13 +108,21 @@ class QueueUpload {
     } catch (error) {
       console.error(`Error uploading chunk ${chunkIndex + 1}/${totalChunks}:`, error);
       
-      // Retry logic for specific errors
-      if (retryCount < this.maxRetries && (
-          error.message.includes('SSL') || 
-          error.message.includes('network') ||
-          error.message.includes('fetch') ||
-          error.message.includes('Server error') ||
-          error.message.includes('Invalid JSON'))) {
+      const shouldRetry = 
+        retryCount < this.maxRetries && 
+        (error.message.includes('SSL') || 
+         error.message.includes('network') ||
+         error.message.includes('fetch') ||
+         error.message.includes('Server error') ||
+         error.message.includes('Invalid server response') ||
+         error.message.includes('temporarily overloaded'));
+
+      if (shouldRetry) {
+        // For server overload (520), use a longer delay
+        if (error.message.includes('temporarily overloaded')) {
+          await this.sleep(5000 + (retryCount * 5000)); // 5s, 10s, 15s
+        }
+        
         console.log(`Retrying chunk ${chunkIndex + 1}/${totalChunks}, attempt ${retryCount + 1}/${this.maxRetries}`);
         return this.uploadChunkWithRetry(formData, chunkIndex, totalChunks, file, retryCount + 1);
       }
@@ -140,9 +157,12 @@ class QueueUpload {
       console.log(`Uploading chunk ${chunkIndex + 1}/${totalChunks} for ${file.name} (${chunk.size} bytes)`);
 
       try {
-        // Wait between chunks with increasing delay for larger files
+        // Dynamic delay based on chunk index and file size
         if (chunkIndex > 0) {
-          const dynamicDelay = this.baseDelay + (Math.floor(chunkIndex / 3) * 200); // Increase delay every 3 chunks
+          const baseDelay = this.baseDelay;
+          const chunkDelay = Math.floor(chunkIndex / 3) * 200; // Increase every 3 chunks
+          const sizeDelay = Math.floor(file.size / (10 * 1024 * 1024)) * 100; // Additional delay for every 10MB
+          const dynamicDelay = baseDelay + chunkDelay + sizeDelay;
           await this.sleep(dynamicDelay);
         }
 
