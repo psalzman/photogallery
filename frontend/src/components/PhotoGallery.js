@@ -106,14 +106,14 @@ function ConfirmationDialog({ isOpen, onClose, onConfirm, photoUrl }) {
   if (!isOpen) return null;
 
   return (
-    <div style={styles.modal}>
-      <div style={styles.modalContent}>
-        <h2 style={styles.headerTitle}>Confirm Photo Selection</h2>
-        <p>Are you sure this is the photo you want printed? Choosing this photo for printing is irreversible.</p>
-        <img src={photoUrl} alt="Selected" style={styles.confirmationImage} />
-        <div style={styles.buttonContainer}>
-          <button onClick={onConfirm} style={styles.button}>Confirm</button>
-          <button onClick={onClose} style={styles.button}>Cancel</button>
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <h2 className="modal-title">Confirm Photo Selection</h2>
+        <p className="modal-message">Are you sure this is the photo you want printed? Choosing this photo for printing is irreversible.</p>
+        <img src={photoUrl} alt="Selected" className="modal-image" />
+        <div className="modal-buttons">
+          <button onClick={onClose} className="modal-button modal-button-cancel">Cancel</button>
+          <button onClick={onConfirm} className="modal-button modal-button-confirm">Confirm</button>
         </div>
       </div>
     </div>
@@ -123,13 +123,11 @@ function ConfirmationDialog({ isOpen, onClose, onConfirm, photoUrl }) {
 function PhotoGallery() {
   const [photos, setPhotos] = useState([]);
   const [error, setError] = useState('');
-  const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [confirmationDialog, setConfirmationDialog] = useState({ isOpen: false, photoId: null, photoUrl: '' });
   const [hasSelectedPhoto, setHasSelectedPhoto] = useState(false);
   const [accessCode, setAccessCode] = useState('');
   const [fullName, setFullName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [modalAnimation, setModalAnimation] = useState('');
   const [slideshowIndex, setSlideshowIndex] = useState(null);
   const [downloadProgress, setDownloadProgress] = useState(null);
   const [userRole, setUserRole] = useState('');

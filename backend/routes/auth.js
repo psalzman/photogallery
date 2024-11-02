@@ -37,7 +37,7 @@ router.post('/login', (req, res) => {
     const token = jwt.sign(
       tokenPayload,
       config.jwt.secret,
-      { expiresIn: '1h' }
+      { expiresIn: '24h' }
     );
 
     console.log('Generated token:', token);
