@@ -30,19 +30,21 @@ function PrintSelections({ setError, refreshTrigger }) {
 
   const downloadFromUrl = useCallback(async (url, filename) => {
     try {
-      // If the URL is relative (starts with '/'), prepend the API base URL without the '/api' suffix
-      const fullUrl = url.startsWith('/') 
-        ? `${API_BASE_URL.replace('/api', '')}${url}`
-        : url;
-
-      const token = localStorage.getItem('token');
-      const response = await fetch(fullUrl, {
-        headers: {
-          'Authorization': `Bearer ${token}`
+      // Determine if this is an S3 URL or a local URL
+      const isS3Url = url.includes('s3.amazonaws.com');
+      
+      // For S3 URLs, use fetch without headers
+      // For local URLs, include the Authorization header
+      const response = await fetch(url, {
+        headers: isS3Url ? {} : {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
       
-      if (!response.ok) throw new Error('Failed to download file');
+      if (!response.ok) {
+        console.error('Download failed with status:', response.status);
+        throw new Error('Failed to download file');
+      }
       
       const blob = await response.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
