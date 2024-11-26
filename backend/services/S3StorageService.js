@@ -14,14 +14,20 @@ class S3StorageService extends StorageService {
             hasCredentials: !!(config.storage.s3.accessKeyId && config.storage.s3.secretAccessKey)
         });
         
-        this.s3Client = new S3Client({
-            region: config.storage.s3.region,
-            credentials: {
-                accessKeyId: config.storage.s3.accessKeyId,
-                secretAccessKey: config.storage.s3.secretAccessKey
-            }
-        });
-        this.bucket = config.storage.s3.bucket;
+        try {
+            this.s3Client = new S3Client({
+                region: config.storage.s3.region,
+                credentials: {
+                    accessKeyId: config.storage.s3.accessKeyId,
+                    secretAccessKey: config.storage.s3.secretAccessKey
+                }
+            });
+            this.bucket = config.storage.s3.bucket;
+            console.log('S3 client initialized successfully');
+        } catch (error) {
+            console.error('Error initializing S3 client:', error);
+            throw error;
+        }
     }
 
     async uploadFile(file, accessCode, filename) {
@@ -76,20 +82,42 @@ class S3StorageService extends StorageService {
         console.log(`Generating signed URL for: ${key}`);
 
         try {
+            // First, verify the object exists
+            try {
+                const getCommand = new GetObjectCommand({
+                    Bucket: this.bucket,
+                    Key: key
+                });
+                await this.s3Client.send(getCommand);
+            } catch (error) {
+                if (error.name === 'NoSuchKey') {
+                    console.error(`File does not exist in S3: ${key}`);
+                    throw new Error(`File not found: ${filename}`);
+                }
+                throw error;
+            }
+
+            // Generate signed URL
             const command = new GetObjectCommand({
                 Bucket: this.bucket,
                 Key: key
             });
 
-            // Generate a signed URL that expires in 1 hour
+            // Generate a signed URL that expires in 15 minutes (900 seconds)
             const signedUrl = await getSignedUrl(this.s3Client, command, {
-                expiresIn: 3600
+                expiresIn: 900
             });
 
-            console.log(`Generated signed URL for ${key}`);
+            console.log(`Generated signed URL for ${key}: ${signedUrl}`);
             return signedUrl;
         } catch (error) {
-            console.error(`Error generating signed URL: ${error.message}`);
+            console.error(`Error generating signed URL for ${key}:`, error);
+            console.error('Error details:', {
+                name: error.name,
+                message: error.message,
+                code: error.code,
+                requestId: error.$metadata?.requestId
+            });
             throw error;
         }
     }

@@ -5,6 +5,7 @@ import API_BASE_URL from '../../config/api';
 
 function PrintSelections({ setError, refreshTrigger }) {
   const [printSelections, setPrintSelections] = useState([]);
+  const [downloadProgress, setDownloadProgress] = useState(null);
 
   const fetchPrintSelections = useCallback(async () => {
     try {
@@ -27,29 +28,57 @@ function PrintSelections({ setError, refreshTrigger }) {
     fetchPrintSelections();
   }, [fetchPrintSelections, refreshTrigger]);
 
-  const handleDownloadPhoto = useCallback(async (selectionId) => {
+  const downloadFromUrl = useCallback(async (url, filename) => {
     try {
+      // If the URL is relative (starts with '/'), prepend the API base URL without the '/api' suffix
+      const fullUrl = url.startsWith('/') 
+        ? `${API_BASE_URL.replace('/api', '')}${url}`
+        : url;
+
+      const token = localStorage.getItem('token');
+      const response = await fetch(fullUrl, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) throw new Error('Failed to download file');
+      
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      console.error('Download error:', err);
+      throw new Error('Failed to download file');
+    }
+  }, []);
+
+  const handleDownloadPhoto = useCallback(async (selectionId, filename) => {
+    try {
+      setDownloadProgress({ text: 'Getting download URL...' });
       const token = localStorage.getItem('token');
       const response = await axios.get(`${API_BASE_URL}/print-selections/download/${selectionId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json'
-        },
-        responseType: 'blob'
+        }
       });
 
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `photo_${selectionId}.jpg`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+      setDownloadProgress({ text: 'Downloading photo...' });
+      await downloadFromUrl(response.data.url, response.data.filename);
+      setDownloadProgress(null);
     } catch (err) {
       console.error('Error downloading photo:', err);
       setError('Failed to download photo. Please try again.');
+      setDownloadProgress(null);
     }
-  }, [setError]);
+  }, [setError, downloadFromUrl]);
 
   const handleRemoveFromPrint = useCallback(async (selectionId) => {
     try {
@@ -70,27 +99,36 @@ function PrintSelections({ setError, refreshTrigger }) {
 
   const handleDownloadAllPhotos = useCallback(async () => {
     try {
+      setDownloadProgress({ text: 'Getting download URLs...' });
       const token = localStorage.getItem('token');
       const response = await axios.get(`${API_BASE_URL}/print-selections/download-all`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json'
-        },
-        responseType: 'blob'
+        }
       });
 
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', 'selected_photos.zip');
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+      setDownloadProgress({ text: 'Downloading photos...' });
+      
+      // Download each file sequentially
+      for (let i = 0; i < response.data.files.length; i++) {
+        const file = response.data.files[i];
+        setDownloadProgress({ 
+          text: `Downloading photo ${i + 1} of ${response.data.files.length}...` 
+        });
+        await downloadFromUrl(file.url, file.filename);
+      }
+
+      setDownloadProgress({ text: 'Downloads complete!' });
+      setTimeout(() => {
+        setDownloadProgress(null);
+      }, 2000);
     } catch (err) {
       console.error('Error downloading all photos:', err);
-      setError('Failed to download all photos. Please try again.');
+      setError('Failed to download photos. Please try again.');
+      setDownloadProgress(null);
     }
-  }, [setError]);
+  }, [setError, downloadFromUrl]);
 
   return (
     <>
@@ -100,6 +138,17 @@ function PrintSelections({ setError, refreshTrigger }) {
         <p>No print selections available.</p>
       ) : (
         <>
+          {downloadProgress && (
+            <div style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              padding: '10px',
+              borderRadius: '4px',
+              marginTop: '10px',
+              marginBottom: '10px'
+            }}>
+              {downloadProgress.text}
+            </div>
+          )}
           <div style={styles.responsiveTable}>
             <table style={styles.table}>
               <thead>
@@ -123,14 +172,16 @@ function PrintSelections({ setError, refreshTrigger }) {
                     <td style={styles.tableCell} data-label="Actions">
                       <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                         <button 
-                          onClick={() => handleDownloadPhoto(selection.selectionId)} 
+                          onClick={() => handleDownloadPhoto(selection.selectionId, selection.filename)} 
                           style={{...styles.button, flex: 1, maxWidth: '120px'}}
+                          disabled={downloadProgress !== null}
                         >
                           Download
                         </button>
                         <button 
                           onClick={() => handleRemoveFromPrint(selection.selectionId)} 
                           style={{...styles.button, flex: 1, maxWidth: '120px', backgroundColor: '#dc3545'}}
+                          disabled={downloadProgress !== null}
                         >
                           Remove
                         </button>
@@ -144,6 +195,7 @@ function PrintSelections({ setError, refreshTrigger }) {
           <button 
             onClick={handleDownloadAllPhotos} 
             style={{...styles.button, marginTop: '20px'}}
+            disabled={downloadProgress !== null}
           >
             Download All Selected Photos
           </button>
