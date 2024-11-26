@@ -68,7 +68,6 @@ function PrintSelections({ setError, refreshTrigger }) {
 
       if (s3Url) {
         console.log('Using direct download for S3 URL');
-        // Open in new tab
         window.open(url, '_blank');
         return;
       }
@@ -158,29 +157,33 @@ function PrintSelections({ setError, refreshTrigger }) {
   const handleDownloadAllPhotos = useCallback(async () => {
     try {
       console.log('Starting bulk download process...');
-      setDownloadProgress({ text: 'Getting download URLs...' });
+      setDownloadProgress({ text: 'Creating zip file...' });
       
       const token = localStorage.getItem('token');
       const response = await axios.get(`${API_BASE_URL}/print-selections/download-all`, {
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        }
+          'Accept': 'application/zip',
+          'Content-Type': 'application/json'
+        },
+        responseType: 'blob'
       });
 
-      console.log('Received URLs for bulk download:', response.data);
-      setDownloadProgress({ text: 'Downloading photos...' });
+      console.log('Received zip file response');
+      setDownloadProgress({ text: 'Downloading zip file...' });
       
-      // Download each file sequentially
-      for (let i = 0; i < response.data.files.length; i++) {
-        const file = response.data.files[i];
-        setDownloadProgress({ 
-          text: `Downloading photo ${i + 1} of ${response.data.files.length}...` 
-        });
-        await downloadFromUrl(file.url, file.filename);
-      }
+      // Create a blob URL and trigger download
+      const blob = new Blob([response.data], { type: 'application/zip' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'selected_photos.zip';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
 
-      setDownloadProgress({ text: 'Downloads complete!' });
+      setDownloadProgress({ text: 'Download complete!' });
       setTimeout(() => {
         setDownloadProgress(null);
       }, 2000);
@@ -189,7 +192,7 @@ function PrintSelections({ setError, refreshTrigger }) {
       setError('Failed to download photos. Please try again.');
       setDownloadProgress(null);
     }
-  }, [setError, downloadFromUrl]);
+  }, [setError]);
 
   return (
     <>

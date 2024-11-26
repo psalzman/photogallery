@@ -5,6 +5,7 @@ const db = require('../database');
 const verifyToken = require('../middleware/verifyToken');
 const StorageFactory = require('../services/StorageFactory');
 const storageService = StorageFactory.getStorage();
+const axios = require('axios');
 
 // Get all print selections
 router.get('/', verifyToken, (req, res) => {
@@ -97,27 +98,50 @@ router.get('/download-all', verifyToken, async (req, res) => {
       return res.status(404).json({ error: 'No photos found for download' });
     }
 
-    // Get signed URLs for all files
-    console.log('Generating signed URLs for all photos');
-    const files = await Promise.all(rows.map(async row => {
-      try {
-        const signedUrl = await storageService.getFileUrl(row.access_code, row.filename);
-        return { url: signedUrl, filename: row.filename };
-      } catch (err) {
-        console.error(`Error generating signed URL for ${row.filename}:`, err);
-        throw err;
-      }
-    }));
+    // Create a zip file stream
+    const archive = archiver('zip', {
+      zlib: { level: 5 } // Set compression level
+    });
 
-    console.log(`Successfully generated ${files.length} signed URLs`);
-    // Return the list of signed URLs to the client
-    res.json({ files });
+    // Set the response headers for zip download
+    res.attachment('selected_photos.zip');
+    res.setHeader('Content-Type', 'application/zip');
+
+    // Pipe the archive to the response
+    archive.pipe(res);
+
+    // Add each file to the archive
+    for (const row of rows) {
+      try {
+        console.log(`Processing file: ${row.filename}`);
+        const signedUrl = await storageService.getFileUrl(row.access_code, row.filename);
+        console.log(`Got signed URL for ${row.filename}`);
+        
+        // Download the file from S3
+        const response = await axios({
+          method: 'get',
+          url: signedUrl,
+          responseType: 'stream'
+        });
+
+        // Add the file to the zip
+        archive.append(response.data, { name: row.filename });
+        console.log(`Added ${row.filename} to zip`);
+      } catch (err) {
+        console.error(`Error processing file ${row.filename}:`, err);
+        // Continue with other files even if one fails
+      }
+    }
+
+    // Finalize the archive
+    await archive.finalize();
+    console.log('Zip archive finalized');
 
   } catch (err) {
     console.error('Error in download-all route:', err);
     console.error('Error stack:', err.stack);
     res.status(500).json({ 
-      error: 'Failed to get photo URLs',
+      error: 'Failed to create zip file',
       details: process.env.NODE_ENV === 'development' ? err.message : undefined
     });
   }
