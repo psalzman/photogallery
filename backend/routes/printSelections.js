@@ -31,10 +31,10 @@ router.get('/download/:id', verifyToken, async (req, res) => {
   try {
     console.log(`Attempting to download photo for selection ID: ${selectionId}`);
     
-    // Get photo information from database
+    // Get photo information from database, including all filenames
     const row = await new Promise((resolve, reject) => {
       db.get(`
-        SELECT p.filename, p.access_code, p.id as photo_id
+        SELECT p.filename, p.medium_filename, p.thumbnail_filename, p.access_code, p.id as photo_id
         FROM print_selections ps
         JOIN photos p ON ps.photo_id = p.id
         WHERE ps.id = ?
@@ -54,9 +54,9 @@ router.get('/download/:id', verifyToken, async (req, res) => {
       return res.status(404).json({ error: 'Photo not found' });
     }
 
-    console.log(`Generating signed URL for access_code: ${row.access_code}, filename: ${row.filename}`);
+    console.log(`Generating signed URL for access_code: ${row.access_code}, filename: ${row.filename} (original file)`);
 
-    // Get signed URL from storage service
+    // Get signed URL for original file
     const signedUrl = await storageService.getFileUrl(row.access_code, row.filename);
     console.log('Generated signed URL:', signedUrl);
     
@@ -78,9 +78,10 @@ router.get('/download-all', verifyToken, async (req, res) => {
   try {
     console.log('Fetching all print selections for download');
     
+    // Get all selected photos with their original filenames
     const rows = await new Promise((resolve, reject) => {
       db.all(`
-        SELECT p.filename, p.access_code
+        SELECT p.filename, p.medium_filename, p.thumbnail_filename, p.access_code
         FROM print_selections ps
         JOIN photos p ON ps.photo_id = p.id
       `, (err, rows) => {
@@ -110,12 +111,12 @@ router.get('/download-all', verifyToken, async (req, res) => {
     // Pipe the archive to the response
     archive.pipe(res);
 
-    // Add each file to the archive
+    // Add each original file to the archive
     for (const row of rows) {
       try {
-        console.log(`Processing file: ${row.filename}`);
+        console.log(`Processing original file: ${row.filename}`);
         const signedUrl = await storageService.getFileUrl(row.access_code, row.filename);
-        console.log(`Got signed URL for ${row.filename}`);
+        console.log(`Got signed URL for original file: ${row.filename}`);
         
         // Download the file from S3
         const response = await axios({
@@ -126,7 +127,7 @@ router.get('/download-all', verifyToken, async (req, res) => {
 
         // Add the file to the zip
         archive.append(response.data, { name: row.filename });
-        console.log(`Added ${row.filename} to zip`);
+        console.log(`Added original file ${row.filename} to zip`);
       } catch (err) {
         console.error(`Error processing file ${row.filename}:`, err);
         // Continue with other files even if one fails
