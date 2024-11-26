@@ -30,48 +30,71 @@ function PrintSelections({ setError, refreshTrigger }) {
 
   const downloadFromUrl = useCallback(async (url, filename) => {
     try {
+      console.log('Starting download from URL:', url);
+      console.log('Filename:', filename);
+
       // Determine if this is an S3 URL or a local URL
       const isS3Url = url.includes('s3.amazonaws.com');
+      console.log('Is S3 URL:', isS3Url);
       
       // For S3 URLs, use fetch without headers
       // For local URLs, include the Authorization header
-      const response = await fetch(url, {
-        headers: isS3Url ? {} : {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const headers = isS3Url ? {} : {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      };
+      console.log('Using headers:', headers);
+
+      console.log('Fetching file...');
+      const response = await fetch(url, { headers });
       
       if (!response.ok) {
         console.error('Download failed with status:', response.status);
-        throw new Error('Failed to download file');
+        console.error('Response headers:', Object.fromEntries(response.headers.entries()));
+        const text = await response.text();
+        console.error('Response text:', text);
+        throw new Error(`Failed to download file: ${response.status} ${response.statusText}`);
       }
       
+      console.log('Creating blob from response...');
       const blob = await response.blob();
+      console.log('Blob created:', blob.type, blob.size);
+
+      console.log('Creating object URL...');
       const downloadUrl = window.URL.createObjectURL(blob);
+      
+      console.log('Creating and clicking download link...');
       const link = document.createElement('a');
       link.href = downloadUrl;
       link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      
+      console.log('Revoking object URL...');
       window.URL.revokeObjectURL(downloadUrl);
+      
+      console.log('Download complete');
     } catch (err) {
       console.error('Download error:', err);
-      throw new Error('Failed to download file');
+      throw err;
     }
   }, []);
 
   const handleDownloadPhoto = useCallback(async (selectionId, filename) => {
     try {
+      console.log('Starting download process for selection ID:', selectionId);
       setDownloadProgress({ text: 'Getting download URL...' });
+      
       const token = localStorage.getItem('token');
+      console.log('Requesting download URL from server...');
       const response = await axios.get(`${API_BASE_URL}/print-selections/download/${selectionId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json'
         }
       });
-
+      
+      console.log('Received response from server:', response.data);
       setDownloadProgress({ text: 'Downloading photo...' });
       await downloadFromUrl(response.data.url, response.data.filename);
       setDownloadProgress(null);
@@ -101,7 +124,9 @@ function PrintSelections({ setError, refreshTrigger }) {
 
   const handleDownloadAllPhotos = useCallback(async () => {
     try {
+      console.log('Starting bulk download process...');
       setDownloadProgress({ text: 'Getting download URLs...' });
+      
       const token = localStorage.getItem('token');
       const response = await axios.get(`${API_BASE_URL}/print-selections/download-all`, {
         headers: {
@@ -110,6 +135,7 @@ function PrintSelections({ setError, refreshTrigger }) {
         }
       });
 
+      console.log('Received URLs for bulk download:', response.data);
       setDownloadProgress({ text: 'Downloading photos...' });
       
       // Download each file sequentially
