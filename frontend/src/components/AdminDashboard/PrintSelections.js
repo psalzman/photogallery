@@ -30,15 +30,30 @@ function PrintSelections({ setError, refreshTrigger }) {
 
   const isS3Url = useCallback((url) => {
     try {
-      // Try to create a URL object to parse the hostname
+      // First check if it contains our bucket name
+      if (url.includes('salzphotoshare')) {
+        console.log('URL contains our bucket name, treating as S3 URL');
+        return true;
+      }
+
+      // Fallback to hostname check
       const urlObj = new URL(url);
-      console.log('URL hostname:', urlObj.hostname);
+      console.log('URL object:', {
+        href: urlObj.href,
+        origin: urlObj.origin,
+        protocol: urlObj.protocol,
+        hostname: urlObj.hostname,
+        pathname: urlObj.pathname,
+        search: urlObj.search
+      });
+      
       const isS3 = urlObj.hostname.includes('s3.amazonaws.com');
-      console.log('Is S3 URL (based on hostname):', isS3);
+      console.log('Is S3 URL (based on hostname check):', isS3);
       return isS3;
     } catch (e) {
       console.error('Error parsing URL:', e);
-      return false;
+      // If URL parsing fails, still check for bucket name
+      return url.includes('salzphotoshare');
     }
   }, []);
 
@@ -49,18 +64,12 @@ function PrintSelections({ setError, refreshTrigger }) {
       
       // Check if it's an S3 URL
       const s3Url = isS3Url(url);
-      console.log('Is S3 URL:', s3Url);
+      console.log('Is S3 URL (final determination):', s3Url);
 
       if (s3Url) {
         console.log('Using direct download for S3 URL');
-        // Create a temporary link and click it
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        link.target = '_blank'; // Open in new tab as fallback
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        // Open in new tab
+        window.open(url, '_blank');
         return;
       }
 
