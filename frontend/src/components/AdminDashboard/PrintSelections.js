@@ -28,24 +28,25 @@ function PrintSelections({ setError, refreshTrigger }) {
     fetchPrintSelections();
   }, [fetchPrintSelections, refreshTrigger]);
 
-  const downloadFromUrl = useCallback(async (url, filename) => {
+  const downloadFromUrl = useCallback(async (url, filename, isS3Url) => {
     try {
       console.log('Starting download from URL:', url);
       console.log('Filename:', filename);
-
-      // Determine if this is an S3 URL or a local URL
-      const isS3Url = url.includes('s3.amazonaws.com');
       console.log('Is S3 URL:', isS3Url);
-      
-      // For S3 URLs, use fetch without headers
-      // For local URLs, include the Authorization header
-      const headers = isS3Url ? {} : {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      };
-      console.log('Using headers:', headers);
 
-      console.log('Fetching file...');
-      const response = await fetch(url, { headers });
+      const requestOptions = {
+        method: 'GET'
+      };
+      
+      // Only add Authorization header for non-S3 URLs
+      if (!isS3Url) {
+        requestOptions.headers = {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        };
+      }
+      
+      console.log('Using request options:', requestOptions);
+      const response = await fetch(url, requestOptions);
       
       if (!response.ok) {
         console.error('Download failed with status:', response.status);
@@ -95,8 +96,10 @@ function PrintSelections({ setError, refreshTrigger }) {
       });
       
       console.log('Received response from server:', response.data);
+      const isS3Url = response.data.url.includes('s3.amazonaws.com');
+      
       setDownloadProgress({ text: 'Downloading photo...' });
-      await downloadFromUrl(response.data.url, response.data.filename);
+      await downloadFromUrl(response.data.url, response.data.filename, isS3Url);
       setDownloadProgress(null);
     } catch (err) {
       console.error('Error downloading photo:', err);
@@ -144,7 +147,8 @@ function PrintSelections({ setError, refreshTrigger }) {
         setDownloadProgress({ 
           text: `Downloading photo ${i + 1} of ${response.data.files.length}...` 
         });
-        await downloadFromUrl(file.url, file.filename);
+        const isS3Url = file.url.includes('s3.amazonaws.com');
+        await downloadFromUrl(file.url, file.filename, isS3Url);
       }
 
       setDownloadProgress({ text: 'Downloads complete!' });
