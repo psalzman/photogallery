@@ -30,11 +30,15 @@ function PrintSelections({ setError, refreshTrigger }) {
 
   const isS3Url = useCallback((url) => {
     try {
-      const decodedUrl = decodeURIComponent(url);
-      return decodedUrl.includes('s3.amazonaws.com');
+      // Try to create a URL object to parse the hostname
+      const urlObj = new URL(url);
+      console.log('URL hostname:', urlObj.hostname);
+      const isS3 = urlObj.hostname.includes('s3.amazonaws.com');
+      console.log('Is S3 URL (based on hostname):', isS3);
+      return isS3;
     } catch (e) {
-      console.error('Error decoding URL:', e);
-      return url.includes('s3.amazonaws.com');
+      console.error('Error parsing URL:', e);
+      return false;
     }
   }, []);
 
@@ -42,17 +46,24 @@ function PrintSelections({ setError, refreshTrigger }) {
     try {
       console.log('Starting download from URL:', url);
       console.log('Filename:', filename);
+      
+      // Check if it's an S3 URL
       const s3Url = isS3Url(url);
       console.log('Is S3 URL:', s3Url);
 
       if (s3Url) {
-        // For S3 URLs, open in new tab
-        console.log('Opening S3 URL in new tab');
-        window.open(url, '_blank');
+        console.log('Using direct download for S3 URL');
+        // Create a temporary link and click it
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.target = '_blank'; // Open in new tab as fallback
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
         return;
       }
 
-      // For non-S3 URLs, use fetch with authorization
       console.log('Using fetch for non-S3 URL');
       const response = await fetch(url, {
         headers: {
