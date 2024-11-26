@@ -34,14 +34,14 @@ function PrintSelections({ setError, refreshTrigger }) {
       console.log('Filename:', filename);
       console.log('Is S3 URL:', isS3Url);
 
-      const requestOptions = {
-        method: 'GET'
-      };
+      let requestOptions = {};
       
-      // Only add Authorization header for non-S3 URLs
       if (!isS3Url) {
-        requestOptions.headers = {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        // Only add headers for non-S3 URLs
+        requestOptions = {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
         };
       }
       
@@ -97,6 +97,7 @@ function PrintSelections({ setError, refreshTrigger }) {
       
       console.log('Received response from server:', response.data);
       const isS3Url = response.data.url.includes('s3.amazonaws.com');
+      console.log('URL is S3:', isS3Url);
       
       setDownloadProgress({ text: 'Downloading photo...' });
       await downloadFromUrl(response.data.url, response.data.filename, isS3Url);
