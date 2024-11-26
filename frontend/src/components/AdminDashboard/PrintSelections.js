@@ -34,19 +34,26 @@ function PrintSelections({ setError, refreshTrigger }) {
       console.log('Filename:', filename);
       console.log('Is S3 URL:', isS3Url);
 
-      let requestOptions = {};
-      
-      if (!isS3Url) {
-        // Only add headers for non-S3 URLs
-        requestOptions = {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        };
+      if (isS3Url) {
+        // For S3 URLs, create a temporary link and click it
+        console.log('Using direct link for S3 URL');
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename; // This might not work for cross-origin URLs
+        link.target = '_blank'; // Open in new tab as fallback if download attribute doesn't work
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        return;
       }
-      
-      console.log('Using request options:', requestOptions);
-      const response = await fetch(url, requestOptions);
+
+      // For non-S3 URLs, use fetch with authorization
+      console.log('Using fetch for non-S3 URL');
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
       
       if (!response.ok) {
         console.error('Download failed with status:', response.status);
