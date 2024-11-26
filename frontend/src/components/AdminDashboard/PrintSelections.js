@@ -28,22 +28,27 @@ function PrintSelections({ setError, refreshTrigger }) {
     fetchPrintSelections();
   }, [fetchPrintSelections, refreshTrigger]);
 
-  const downloadFromUrl = useCallback(async (url, filename, isS3Url) => {
+  const isS3Url = useCallback((url) => {
+    try {
+      const decodedUrl = decodeURIComponent(url);
+      return decodedUrl.includes('s3.amazonaws.com');
+    } catch (e) {
+      console.error('Error decoding URL:', e);
+      return url.includes('s3.amazonaws.com');
+    }
+  }, []);
+
+  const downloadFromUrl = useCallback(async (url, filename) => {
     try {
       console.log('Starting download from URL:', url);
       console.log('Filename:', filename);
-      console.log('Is S3 URL:', isS3Url);
+      const s3Url = isS3Url(url);
+      console.log('Is S3 URL:', s3Url);
 
-      if (isS3Url) {
-        // For S3 URLs, create a temporary link and click it
-        console.log('Using direct link for S3 URL');
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename; // This might not work for cross-origin URLs
-        link.target = '_blank'; // Open in new tab as fallback if download attribute doesn't work
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+      if (s3Url) {
+        // For S3 URLs, open in new tab
+        console.log('Opening S3 URL in new tab');
+        window.open(url, '_blank');
         return;
       }
 
@@ -86,7 +91,7 @@ function PrintSelections({ setError, refreshTrigger }) {
       console.error('Download error:', err);
       throw err;
     }
-  }, []);
+  }, [isS3Url]);
 
   const handleDownloadPhoto = useCallback(async (selectionId, filename) => {
     try {
@@ -103,11 +108,8 @@ function PrintSelections({ setError, refreshTrigger }) {
       });
       
       console.log('Received response from server:', response.data);
-      const isS3Url = response.data.url.includes('s3.amazonaws.com');
-      console.log('URL is S3:', isS3Url);
-      
       setDownloadProgress({ text: 'Downloading photo...' });
-      await downloadFromUrl(response.data.url, response.data.filename, isS3Url);
+      await downloadFromUrl(response.data.url, response.data.filename);
       setDownloadProgress(null);
     } catch (err) {
       console.error('Error downloading photo:', err);
@@ -155,8 +157,7 @@ function PrintSelections({ setError, refreshTrigger }) {
         setDownloadProgress({ 
           text: `Downloading photo ${i + 1} of ${response.data.files.length}...` 
         });
-        const isS3Url = file.url.includes('s3.amazonaws.com');
-        await downloadFromUrl(file.url, file.filename, isS3Url);
+        await downloadFromUrl(file.url, file.filename);
       }
 
       setDownloadProgress({ text: 'Downloads complete!' });
