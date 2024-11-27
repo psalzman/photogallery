@@ -1,162 +1,155 @@
 const express = require('express');
 const router = express.Router();
 const archiver = require('archiver');
-const db = require('../database');
+const { dbAsync } = require('../database');
 const verifyToken = require('../middleware/verifyToken');
 const StorageFactory = require('../services/StorageFactory');
 const storageService = StorageFactory.getStorage();
 const axios = require('axios');
 
 // Get all print selections
-router.get('/', verifyToken, (req, res) => {
-  db.all(`
-    SELECT ps.id as selectionId, p.filename, p.access_code, ac.email as viewerEmail, ac.full_name as viewerFullName
-    FROM print_selections ps
-    JOIN photos p ON ps.photo_id = p.id
-    JOIN access_codes ac ON p.access_code = ac.code
-    ORDER BY ps.id DESC
-  `, (err, rows) => {
-    if (err) {
-      console.error('Error fetching print selections:', err);
-      return res.status(500).json({ error: 'Failed to fetch print selections' });
-    }
+router.get('/', verifyToken, async (req, res) => {
+  const requestId = req.requestId;
+  console.log(`[${requestId}] Fetching all print selections`);
+
+  try {
+    const rows = await dbAsync.all(`
+      SELECT ps.id as selectionId, p.filename, p.access_code, ac.email as viewerEmail, ac.full_name as viewerFullName
+      FROM print_selections ps
+      JOIN photos p ON ps.photo_id = p.id
+      JOIN access_codes ac ON p.access_code = ac.code
+      ORDER BY ps.id DESC
+    `);
+    
+    console.log(`[${requestId}] Found ${rows.length} print selections`);
     res.json({ printSelections: rows });
-  });
+  } catch (error) {
+    console.error(`[${requestId}] Error fetching print selections:`, error);
+    res.status(500).json({ 
+      error: 'Failed to fetch print selections',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      requestId
+    });
+  }
 });
 
 // Download a single photo
 router.get('/download/:id', verifyToken, async (req, res) => {
   const selectionId = req.params.id;
+  const requestId = req.requestId;
 
   try {
-    console.log(`Attempting to download photo for selection ID: ${selectionId}`);
+    console.log(`[${requestId}] Attempting to download photo for selection ID: ${selectionId}`);
     
-    // Get photo information from database, including all filenames
-    const row = await new Promise((resolve, reject) => {
-      db.get(`
-        SELECT p.filename, p.medium_filename, p.thumbnail_filename, p.access_code, p.id as photo_id
-        FROM print_selections ps
-        JOIN photos p ON ps.photo_id = p.id
-        WHERE ps.id = ?
-      `, [selectionId], (err, row) => {
-        if (err) {
-          console.error('Database error:', err);
-          reject(err);
-        } else {
-          console.log('Database result:', row);
-          resolve(row);
-        }
-      });
-    });
+    const row = await dbAsync.get(`
+      SELECT p.filename, p.medium_filename, p.thumbnail_filename, p.access_code, p.id as photo_id
+      FROM print_selections ps
+      JOIN photos p ON ps.photo_id = p.id
+      WHERE ps.id = ?
+    `, [selectionId]);
 
     if (!row) {
-      console.error('Photo not found for selection ID:', selectionId);
+      console.error(`[${requestId}] Photo not found for selection ID:`, selectionId);
       return res.status(404).json({ error: 'Photo not found' });
     }
 
-    console.log(`Generating signed URL for access_code: ${row.access_code}, filename: ${row.filename} (original file)`);
+    console.log(`[${requestId}] Database result:`, row);
+    console.log(`[${requestId}] Generating signed URL for access_code: ${row.access_code}, filename: ${row.filename}`);
 
-    // Get signed URL for original file
     const signedUrl = await storageService.getFileUrl(row.access_code, row.filename);
-    console.log('Generated signed URL:', signedUrl);
+    console.log(`[${requestId}] Generated signed URL:`, signedUrl);
     
-    // Return the signed URL to the client
     res.json({ url: signedUrl, filename: row.filename });
-
-  } catch (err) {
-    console.error('Error in download route:', err);
-    console.error('Error stack:', err.stack);
+  } catch (error) {
+    console.error(`[${requestId}] Error in download route:`, error);
+    console.error(`[${requestId}] Stack trace:`, error.stack);
     res.status(500).json({ 
       error: 'Failed to get photo URL',
-      details: process.env.NODE_ENV === 'development' ? err.message : undefined
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      requestId
     });
   }
 });
 
 // Download all selected photos as a zip file
 router.get('/download-all', verifyToken, async (req, res) => {
+  const requestId = req.requestId;
+
   try {
-    console.log('Fetching all print selections for download');
+    console.log(`[${requestId}] Fetching all print selections for download`);
     
-    // Get all selected photos with their original filenames
-    const rows = await new Promise((resolve, reject) => {
-      db.all(`
-        SELECT p.filename, p.medium_filename, p.thumbnail_filename, p.access_code
-        FROM print_selections ps
-        JOIN photos p ON ps.photo_id = p.id
-      `, (err, rows) => {
-        if (err) {
-          console.error('Database error:', err);
-          reject(err);
-        } else {
-          console.log(`Found ${rows.length} photos for download`);
-          resolve(rows);
-        }
-      });
-    });
+    const rows = await dbAsync.all(`
+      SELECT p.filename, p.medium_filename, p.thumbnail_filename, p.access_code
+      FROM print_selections ps
+      JOIN photos p ON ps.photo_id = p.id
+    `);
+
+    console.log(`[${requestId}] Found ${rows.length} photos for download`);
 
     if (rows.length === 0) {
       return res.status(404).json({ error: 'No photos found for download' });
     }
 
-    // Create a zip file stream
     const archive = archiver('zip', {
-      zlib: { level: 5 } // Set compression level
+      zlib: { level: 5 }
     });
 
-    // Set the response headers for zip download
+    archive.on('error', (err) => {
+      console.error(`[${requestId}] Archive error:`, err);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Failed to create zip file' });
+      }
+    });
+
     res.attachment('selected_photos.zip');
     res.setHeader('Content-Type', 'application/zip');
-
-    // Pipe the archive to the response
     archive.pipe(res);
 
-    // Add each original file to the archive
     for (const row of rows) {
       try {
-        console.log(`Processing original file: ${row.filename}`);
+        console.log(`[${requestId}] Processing file: ${row.filename}`);
         const signedUrl = await storageService.getFileUrl(row.access_code, row.filename);
-        console.log(`Got signed URL for original file: ${row.filename}`);
         
-        // Download the file from S3
         const response = await axios({
           method: 'get',
           url: signedUrl,
           responseType: 'stream'
         });
 
-        // Add the file to the zip
         archive.append(response.data, { name: row.filename });
-        console.log(`Added original file ${row.filename} to zip`);
-      } catch (err) {
-        console.error(`Error processing file ${row.filename}:`, err);
-        // Continue with other files even if one fails
+        console.log(`[${requestId}] Added ${row.filename} to zip`);
+      } catch (error) {
+        console.error(`[${requestId}] Error processing file ${row.filename}:`, error);
       }
     }
 
-    // Finalize the archive
     await archive.finalize();
-    console.log('Zip archive finalized');
-
-  } catch (err) {
-    console.error('Error in download-all route:', err);
-    console.error('Error stack:', err.stack);
-    res.status(500).json({ 
-      error: 'Failed to create zip file',
-      details: process.env.NODE_ENV === 'development' ? err.message : undefined
-    });
+    console.log(`[${requestId}] Zip archive finalized`);
+  } catch (error) {
+    console.error(`[${requestId}] Error in download-all route:`, error);
+    console.error(`[${requestId}] Stack trace:`, error.stack);
+    if (!res.headersSent) {
+      res.status(500).json({ 
+        error: 'Failed to create zip file',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        requestId
+      });
+    }
   }
 });
 
 // Remove a print selection
-router.delete('/:id', verifyToken, (req, res) => {
+router.delete('/:id', verifyToken, async (req, res) => {
   const selectionId = req.params.id;
+  const requestId = req.requestId;
 
-  db.get('SELECT photo_id FROM print_selections WHERE id = ?', [selectionId], (err, row) => {
-    if (err) {
-      console.error('Error fetching print selection:', err);
-      return res.status(500).json({ error: 'Failed to fetch print selection information' });
-    }
+  try {
+    console.log(`[${requestId}] Removing print selection ID: ${selectionId}`);
+    
+    const row = await dbAsync.get(
+      'SELECT photo_id FROM print_selections WHERE id = ?',
+      [selectionId]
+    );
 
     if (!row) {
       return res.status(404).json({ error: 'Print selection not found' });
@@ -164,22 +157,26 @@ router.delete('/:id', verifyToken, (req, res) => {
 
     const photoId = row.photo_id;
 
-    db.run('DELETE FROM print_selections WHERE id = ?', [selectionId], function(deleteErr) {
-      if (deleteErr) {
-        console.error('Error deleting print selection:', deleteErr);
-        return res.status(500).json({ error: 'Failed to delete print selection' });
-      }
+    await dbAsync.run(
+      'DELETE FROM print_selections WHERE id = ?',
+      [selectionId]
+    );
 
-      db.run('UPDATE photos SET selected_for_printing = 0 WHERE id = ?', [photoId], function(updateErr) {
-        if (updateErr) {
-          console.error('Error updating photo selected_for_printing status:', updateErr);
-          return res.status(500).json({ error: 'Failed to update photo status' });
-        }
+    await dbAsync.run(
+      'UPDATE photos SET selected_for_printing = 0 WHERE id = ?',
+      [photoId]
+    );
 
-        res.json({ message: 'Print selection removed successfully' });
-      });
+    console.log(`[${requestId}] Successfully removed print selection`);
+    res.json({ message: 'Print selection removed successfully' });
+  } catch (error) {
+    console.error(`[${requestId}] Error removing print selection:`, error);
+    res.status(500).json({ 
+      error: 'Failed to remove print selection',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      requestId
     });
-  });
+  }
 });
 
 module.exports = router;
