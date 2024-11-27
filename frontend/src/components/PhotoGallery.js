@@ -131,8 +131,10 @@ function PhotoGallery() {
   const [slideshowIndex, setSlideshowIndex] = useState(null);
   const [downloadProgress, setDownloadProgress] = useState(null);
   const [userRole, setUserRole] = useState('');
+  const [isInitialized, setIsInitialized] = useState(false);
   const navigate = useNavigate();
 
+  // First useEffect to handle authentication and user info
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -142,6 +144,7 @@ function PhotoGallery() {
         setAccessCode(decodedToken.code);
         setFullName(decodedToken.fullName || 'User');
         setUserRole(decodedToken.role || '');
+        setIsInitialized(true);
       } catch (err) {
         console.error('Error decoding token:', err);
         setError('Session expired. Please login again.');
@@ -164,6 +167,7 @@ function PhotoGallery() {
         `${API_BASE_URL}/photos/all` : 
         `${API_BASE_URL}/photos/${accessCode}`;
 
+      console.log('Fetching photos from:', endpoint);
       const response = await axios.get(endpoint, {
         headers: { 
           'Authorization': `Bearer ${token}`,
@@ -171,6 +175,7 @@ function PhotoGallery() {
           'Content-Type': 'application/json'
         }
       });
+      console.log('Received photos:', response.data.photos.length);
       setPhotos(response.data.photos);
       setHasSelectedPhoto(response.data.photos.some(photo => photo.selected_for_printing === 1));
     } catch (err) {
@@ -181,9 +186,13 @@ function PhotoGallery() {
     }
   }, [accessCode, userRole]);
 
+  // Second useEffect to fetch photos only after initialization
   useEffect(() => {
-    fetchPhotos();
-  }, [fetchPhotos]);
+    if (isInitialized) {
+      console.log('Component initialized, fetching photos with:', { accessCode, userRole });
+      fetchPhotos();
+    }
+  }, [fetchPhotos, isInitialized]);
 
   const handleDownloadAll = async () => {
     try {
