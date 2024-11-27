@@ -134,13 +134,29 @@ function PhotoGallery() {
   const [isInitialized, setIsInitialized] = useState(false);
   const navigate = useNavigate();
 
-  // First useEffect to handle authentication and user info
+  // Reset state when component unmounts or when token changes
   useEffect(() => {
     const token = localStorage.getItem('token');
+    
+    // Reset state on mount
+    setPhotos([]);
+    setError('');
+    setIsInitialized(false);
+    setIsLoading(true);
+    setAccessCode('');
+    setUserRole('');
+    setFullName('');
+    
+    // Initialize user if token exists
     if (token) {
       try {
+        console.log('Initializing user with token');
         const tokenValue = token.startsWith('Bearer ') ? token.slice(7) : token;
         const decodedToken = jwtDecode(tokenValue);
+        console.log('Token decoded successfully:', { 
+          code: decodedToken.code,
+          role: decodedToken.role 
+        });
         setAccessCode(decodedToken.code);
         setFullName(decodedToken.fullName || 'User');
         setUserRole(decodedToken.role || '');
@@ -148,26 +164,52 @@ function PhotoGallery() {
       } catch (err) {
         console.error('Error decoding token:', err);
         setError('Session expired. Please login again.');
+        localStorage.removeItem('token');
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('userEmail');
         navigate('/');
       }
     } else {
+      console.log('No token found, redirecting to login');
       navigate('/');
     }
-  }, [navigate]);
+
+    // Cleanup function
+    return () => {
+      console.log('Component unmounting, cleaning up state');
+      setPhotos([]);
+      setError('');
+      setIsInitialized(false);
+      setIsLoading(true);
+      setAccessCode('');
+      setUserRole('');
+      setFullName('');
+    };
+  }, [navigate]); // Only re-run if navigate changes
 
   const fetchPhotos = useCallback(async () => {
-    if (!accessCode && userRole !== 'viewall') return;
+    if (!accessCode && userRole !== 'viewall') {
+      console.log('No access code or viewall role, skipping fetch');
+      return;
+    }
 
     setIsLoading(true);
     setError('');
+    setPhotos([]); // Clear photos before fetching new ones
 
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No token available');
+      }
+
       const endpoint = userRole === 'viewall' ? 
         `${API_BASE_URL}/photos/all` : 
         `${API_BASE_URL}/photos/${accessCode}`;
 
       console.log('Fetching photos from:', endpoint);
+      console.log('Using token:', token.substring(0, 20) + '...');
+
       const response = await axios.get(endpoint, {
         headers: { 
           'Authorization': `Bearer ${token}`,
@@ -175,21 +217,47 @@ function PhotoGallery() {
           'Content-Type': 'application/json'
         }
       });
+
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+      
+      if (!response.data.photos) {
+        throw new Error('No photos data in response');
+      }
+
       console.log('Received photos:', response.data.photos.length);
       setPhotos(response.data.photos);
       setHasSelectedPhoto(response.data.photos.some(photo => photo.selected_for_printing === 1));
     } catch (err) {
       console.error('Error fetching photos:', err);
-      setError('Failed to fetch photos. Please try again later.');
+      console.error('Error details:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status
+      });
+
+      if (err.response?.status === 401) {
+        setError('Session expired. Please login again.');
+        localStorage.removeItem('token');
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('userEmail');
+        navigate('/');
+      } else {
+        setError('Failed to fetch photos. Please try again later.');
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [accessCode, userRole]);
+  }, [accessCode, userRole, navigate]);
 
-  // Second useEffect to fetch photos only after initialization
+  // Fetch photos only after initialization
   useEffect(() => {
     if (isInitialized) {
-      console.log('Component initialized, fetching photos with:', { accessCode, userRole });
+      console.log('Component initialized, fetching photos with:', { 
+        accessCode, 
+        userRole,
+        hasToken: !!localStorage.getItem('token')
+      });
       fetchPhotos();
     }
   }, [fetchPhotos, isInitialized]);
