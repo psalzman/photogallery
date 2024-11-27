@@ -9,7 +9,7 @@ const authRoutes = require('./routes/auth');
 const accessCodeRoutes = require('./routes/accessCodes');
 const photoRoutes = require('./routes/photos');
 const printSelectionRoutes = require('./routes/printSelections');
-const db = require('./database');
+const { db, dbAsync } = require('./database');
 const setupAdminAccount = require('./setupAdminAccount');
 const verifyToken = require('./middleware/verifyToken');
 
@@ -36,7 +36,14 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // Request logging
-app.use(morgan('combined'));
+morgan.token('request-id', (req) => req.requestId);
+app.use(morgan(':request-id :remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent"'));
+
+// Add request ID middleware
+app.use((req, res, next) => {
+  req.requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  next();
+});
 
 // Compression middleware
 app.use(compression());
@@ -63,18 +70,44 @@ app.use('/photo-uploads/:accessCode', verifyToken, (req, res, next) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  res.status(500).json({ error: 'Internal server error', details: err.message });
+  console.error(`[${req.requestId}] Error:`, err);
+  res.status(500).json({ 
+    error: 'Internal server error', 
+    details: process.env.NODE_ENV === 'development' ? err.message : undefined,
+    requestId: req.requestId
+  });
 });
 
-// Ensure database connection is established before running setup
-db.serialize(() => {
-  console.log('Database setup complete');
-  // Run the admin account setup
-  setupAdminAccount();
-});
+// Initialize database and start server
+const initializeServer = async () => {
+  try {
+    console.log('Initializing server...');
+    
+    // Wait for database to be ready
+    await new Promise((resolve) => {
+      db.on('open', () => {
+        console.log('Database connection established');
+        resolve();
+      });
+    });
 
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
-  console.log('CORS configuration:', corsOptions);
+    // Run the admin account setup
+    await setupAdminAccount();
+    console.log('Admin account setup complete');
+
+    // Start the server
+    app.listen(port, () => {
+      console.log(`Server running on port ${port}`);
+      console.log('CORS configuration:', corsOptions);
+    });
+  } catch (error) {
+    console.error('Failed to initialize server:', error);
+    process.exit(1);
+  }
+};
+
+// Start the server
+initializeServer().catch(error => {
+  console.error('Server initialization failed:', error);
+  process.exit(1);
 });
