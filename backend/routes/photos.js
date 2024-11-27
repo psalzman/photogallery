@@ -8,7 +8,7 @@ const sharp = require('sharp');
 const exifReader = require('exif-reader');
 const archiver = require('archiver');
 const axios = require('axios');
-const { db, dbAsync } = require('../database');  // Update this line to get both db and dbAsync
+const { db, dbAsync } = require('../database');
 const verifyToken = require('../middleware/verifyToken');
 const StorageFactory = require('../services/StorageFactory');
 const config = require('../config');
@@ -406,48 +406,49 @@ router.post('/upload', verifyToken, upload.array('photos', 100), async (req, res
 });
 
 // Get all photos (for viewall role)
-router.get('/all', verifyToken, (req, res) => {
+router.get('/all', verifyToken, async (req, res) => {
+  const requestId = req.requestId;
+
   if (req.user.role !== 'viewall') {
+    console.error(`[${requestId}] Access denied: User role is not viewall`);
     return res.status(403).json({ error: 'Access denied. Requires viewall role.' });
   }
 
-  console.log('Fetching all photos');
+  try {
+    console.log(`[${requestId}] Fetching all photos...`);
+    const rows = await dbAsync.all('SELECT * FROM photos');
+    console.log(`[${requestId}] Found ${rows.length} photos`);
 
-  db.all('SELECT * FROM photos', [], async (err, rows) => {
-    if (err) {
-      console.error('Error fetching photos:', err);
-      return res.status(500).json({ error: 'Failed to fetch photos' });
-    }
+    const photosWithUrls = await Promise.all(rows.map(async (photo) => {
+      const imageUrl = await storageService.getFileUrl(photo.access_code, photo.filename);
+      const thumbnailUrl = await storageService.getFileUrl(photo.access_code, photo.thumbnail_filename);
+      const mediumUrl = await storageService.getFileUrl(photo.access_code, photo.medium_filename);
+      
+      const exifData = photo.exif_data ? JSON.parse(photo.exif_data) : null;
+      
+      return {
+        ...photo,
+        imageUrl,
+        thumbnailUrl,
+        mediumUrl,
+        exifData
+      };
+    }));
 
-    try {
-      // Add URLs for original, medium, and thumbnail images
-      const photosWithUrls = await Promise.all(rows.map(async (photo) => {
-        const imageUrl = await storageService.getFileUrl(photo.access_code, photo.filename);
-        const thumbnailUrl = await storageService.getFileUrl(photo.access_code, photo.thumbnail_filename);
-        const mediumUrl = await storageService.getFileUrl(photo.access_code, photo.medium_filename);
-        
-        const exifData = photo.exif_data ? JSON.parse(photo.exif_data) : null;
-        
-        return {
-          ...photo,
-          imageUrl,
-          thumbnailUrl,
-          mediumUrl,
-          exifData
-        };
-      }));
-
-      console.log(`Found ${photosWithUrls.length} total photos`);
-      res.json({ photos: photosWithUrls });
-    } catch (error) {
-      console.error('Error generating URLs:', error);
-      res.status(500).json({ error: 'Failed to generate photo URLs' });
-    }
-  });
+    console.log(`[${requestId}] Successfully processed photos`);
+    res.json({ photos: photosWithUrls });
+  } catch (error) {
+    console.error(`[${requestId}] Error fetching photos:`, error);
+    res.status(500).json({ 
+      error: 'Failed to fetch photos',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      requestId
+    });
+  }
 });
 
 // Get photos for a specific access code
-router.get('/:accessCode', verifyToken, async (req, res) => {  // Make this async
+router.get('/:accessCode', verifyToken, async (req, res) => {
   const accessCode = req.params.accessCode;
   const requestId = req.requestId;
   console.log(`[${requestId}] Fetching photos for access code:`, accessCode);
@@ -485,29 +486,44 @@ router.get('/:accessCode', verifyToken, async (req, res) => {  // Make this asyn
     console.error(`[${requestId}] Error fetching photos:`, error);
     res.status(500).json({ 
       error: 'Failed to fetch photos',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      requestId
     });
-    });
+  }
+});
+
+// Download all photos as zip
+router.get('/:accessCode/download-all', verifyToken, async (req, res) => {
+  const accessCode = req.params.accessCode;
+  const requestId = req.requestId;
+  console.log(`[${requestId}] Downloading all photos for access code: ${accessCode}`);
+
+  // Allow viewall role to download any photos
+  if (req.user.role !== 'viewall' && req.user.code !== accessCode) {
+    return res.status(403).json({ error: 'You do not have permission to download these photos' });
+  }
+
+  try {
+    const photos = await dbAsync.all('SELECT * FROM photos WHERE access_code = ?', [accessCode]);
 
     if (!photos || photos.length === 0) {
       return res.status(404).json({ error: 'No photos found' });
     }
 
-    // Create a zip file
     const archive = archiver('zip', {
       zlib: { level: 5 }
     });
 
     archive.on('warning', function(err) {
       if (err.code === 'ENOENT') {
-        console.warn('Archive warning:', err);
+        console.warn(`[${requestId}] Archive warning:`, err);
       } else {
         throw err;
       }
     });
 
     archive.on('error', function(err) {
-      console.error('Archive error:', err);
+      console.error(`[${requestId}] Archive error:`, err);
       if (!res.headersSent) {
         res.status(500).json({ error: 'Failed to create zip file' });
       }
@@ -530,16 +546,20 @@ router.get('/:accessCode', verifyToken, async (req, res) => {  // Make this asyn
 
         archive.append(response.data, { name: photo.filename });
       } catch (error) {
-        console.error(`Error adding file ${photo.filename} to archive:`, error);
+        console.error(`[${requestId}] Error adding file ${photo.filename} to archive:`, error);
       }
     }
 
     await archive.finalize();
-    console.log(`Successfully created zip file for access code: ${accessCode}`);
+    console.log(`[${requestId}] Successfully created zip file for access code: ${accessCode}`);
   } catch (error) {
-    console.error('Error creating zip:', error);
+    console.error(`[${requestId}] Error creating zip:`, error);
     if (!res.headersSent) {
-      res.status(500).json({ error: 'Failed to create zip file' });
+      res.status(500).json({ 
+        error: 'Failed to create zip file',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        requestId
+      });
     }
   }
 });
