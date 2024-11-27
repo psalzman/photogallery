@@ -9,7 +9,7 @@ const authRoutes = require('./routes/auth');
 const accessCodeRoutes = require('./routes/accessCodes');
 const photoRoutes = require('./routes/photos');
 const printSelectionRoutes = require('./routes/printSelections');
-const { db, dbAsync } = require('./database');
+const { db } = require('./database');
 const setupAdminAccount = require('./setupAdminAccount');
 const verifyToken = require('./middleware/verifyToken');
 
@@ -35,15 +35,15 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Request logging
-morgan.token('request-id', (req) => req.requestId);
-app.use(morgan(':request-id :remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent"'));
-
 // Add request ID middleware
 app.use((req, res, next) => {
   req.requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   next();
 });
+
+// Request logging
+morgan.token('request-id', (req) => req.requestId);
+app.use(morgan(':request-id :remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent"'));
 
 // Compression middleware
 app.use(compression());
@@ -72,7 +72,7 @@ app.use('/photo-uploads/:accessCode', verifyToken, (req, res, next) => {
 app.use((err, req, res, next) => {
   console.error(`[${req.requestId}] Error:`, err);
   res.status(500).json({ 
-    error: 'Internal server error', 
+    error: 'Internal server error',
     details: process.env.NODE_ENV === 'development' ? err.message : undefined,
     requestId: req.requestId
   });

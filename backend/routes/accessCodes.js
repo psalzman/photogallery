@@ -1,10 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../database');
+const { dbAsync } = require('../database');
 const verifyToken = require('../middleware/verifyToken');
 
 // Create a new access code
-router.post('/', verifyToken, (req, res) => {
+router.post('/', verifyToken, async (req, res) => {
+  const requestId = req.requestId;
+  console.log(`[${requestId}] Creating new access code`);
+
   if (req.user.role !== 'admin') {
     return res.status(403).json({ error: 'Only admins can create access codes' });
   }
@@ -15,35 +18,43 @@ router.post('/', verifyToken, (req, res) => {
     return res.status(400).json({ error: 'All fields are required' });
   }
 
-  db.run('INSERT INTO access_codes (email, full_name, code, role) VALUES (?, ?, ?, ?)',
-    [email, fullName, code, role],
-    function(err) {
-      if (err) {
-        console.error('Error creating access code:', err.message);
-        return res.status(500).json({ error: 'Failed to create access code' });
-      }
-      res.status(201).json({ message: 'Access code created successfully', id: this.lastID });
-    }
-  );
+  try {
+    const result = await dbAsync.run(
+      'INSERT INTO access_codes (email, full_name, code, role) VALUES (?, ?, ?, ?)',
+      [email, fullName, code, role]
+    );
+    console.log(`[${requestId}] Access code created successfully`);
+    res.status(201).json({ message: 'Access code created successfully', id: result.lastID });
+  } catch (error) {
+    console.error(`[${requestId}] Error creating access code:`, error);
+    res.status(500).json({ error: 'Failed to create access code' });
+  }
 });
 
 // Get all access codes (admin only)
-router.get('/', verifyToken, (req, res) => {
+router.get('/', verifyToken, async (req, res) => {
+  const requestId = req.requestId;
+  console.log(`[${requestId}] Fetching all access codes`);
+
   if (req.user.role !== 'admin') {
     return res.status(403).json({ error: 'Only admins can view access codes' });
   }
 
-  db.all('SELECT * FROM access_codes', (err, rows) => {
-    if (err) {
-      console.error('Error fetching access codes:', err.message);
-      return res.status(500).json({ error: 'Failed to fetch access codes' });
-    }
+  try {
+    const rows = await dbAsync.all('SELECT * FROM access_codes');
+    console.log(`[${requestId}] Found ${rows.length} access codes`);
     res.json({ accessCodes: rows });
-  });
+  } catch (error) {
+    console.error(`[${requestId}] Error fetching access codes:`, error);
+    res.status(500).json({ error: 'Failed to fetch access codes' });
+  }
 });
 
 // Assign additional access code to a viewer
-router.post('/assign', verifyToken, (req, res) => {
+router.post('/assign', verifyToken, async (req, res) => {
+  const requestId = req.requestId;
+  console.log(`[${requestId}] Assigning new access code`);
+
   if (req.user.role !== 'admin') {
     return res.status(403).json({ error: 'Only admins can assign access codes' });
   }
@@ -54,37 +65,37 @@ router.post('/assign', verifyToken, (req, res) => {
     return res.status(400).json({ error: 'Email and new access code are required' });
   }
 
-  console.log('Assigning new access code:', { email, newCode });
+  try {
+    const viewer = await dbAsync.get(
+      'SELECT * FROM access_codes WHERE email = ? AND role = ?',
+      [email, 'viewer']
+    );
 
-  db.get('SELECT * FROM access_codes WHERE email = ? AND role = ?', [email, 'viewer'], (err, row) => {
-    if (err) {
-      console.error('Error fetching user:', err.message);
-      return res.status(500).json({ error: 'Internal server error' });
-    }
-
-    if (!row) {
-      console.log('Viewer not found:', email);
+    if (!viewer) {
+      console.log(`[${requestId}] Viewer not found:`, email);
       return res.status(404).json({ error: 'Viewer not found' });
     }
 
-    console.log('Existing viewer found:', row);
+    console.log(`[${requestId}] Existing viewer found:`, viewer);
 
-    db.run('INSERT INTO access_codes (email, full_name, code, role) VALUES (?, ?, ?, ?)',
-      [email, row.full_name, newCode, 'viewer'],
-      function(err) {
-        if (err) {
-          console.error('Error assigning new access code:', err.message);
-          return res.status(500).json({ error: 'Failed to assign new access code' });
-        }
-        console.log('New access code assigned successfully');
-        res.json({ message: 'New access code assigned successfully' });
-      }
+    await dbAsync.run(
+      'INSERT INTO access_codes (email, full_name, code, role) VALUES (?, ?, ?, ?)',
+      [email, viewer.full_name, newCode, 'viewer']
     );
-  });
+
+    console.log(`[${requestId}] New access code assigned successfully`);
+    res.json({ message: 'New access code assigned successfully' });
+  } catch (error) {
+    console.error(`[${requestId}] Error assigning access code:`, error);
+    res.status(500).json({ error: 'Failed to assign new access code' });
+  }
 });
 
 // Search for viewer email addresses and full names
-router.get('/search', verifyToken, (req, res) => {
+router.get('/search', verifyToken, async (req, res) => {
+  const requestId = req.requestId;
+  console.log(`[${requestId}] Searching for viewers`);
+
   if (req.user.role !== 'admin') {
     return res.status(403).json({ error: 'Only admins can search for email addresses and full names' });
   }
@@ -95,19 +106,26 @@ router.get('/search', verifyToken, (req, res) => {
     return res.status(400).json({ error: 'Search query is required' });
   }
 
-  const searchQuery = `%${query}%`;
+  try {
+    const searchQuery = `%${query}%`;
+    const rows = await dbAsync.all(
+      'SELECT DISTINCT email, full_name FROM access_codes WHERE role = ? AND (email LIKE ? OR full_name LIKE ?)',
+      ['viewer', searchQuery, searchQuery]
+    );
 
-  db.all('SELECT DISTINCT email, full_name FROM access_codes WHERE role = ? AND (email LIKE ? OR full_name LIKE ?)', ['viewer', searchQuery, searchQuery], (err, rows) => {
-    if (err) {
-      console.error('Error searching for email addresses and full names:', err.message);
-      return res.status(500).json({ error: 'Failed to search for email addresses and full names' });
-    }
+    console.log(`[${requestId}] Found ${rows.length} matching viewers`);
     res.json({ results: rows });
-  });
+  } catch (error) {
+    console.error(`[${requestId}] Error searching for viewers:`, error);
+    res.status(500).json({ error: 'Failed to search for email addresses and full names' });
+  }
 });
 
 // Search for access codes
-router.get('/search-codes', verifyToken, (req, res) => {
+router.get('/search-codes', verifyToken, async (req, res) => {
+  const requestId = req.requestId;
+  console.log(`[${requestId}] Searching for access codes`);
+
   if (req.user.role !== 'admin') {
     return res.status(403).json({ error: 'Only admins can search for access codes' });
   }
@@ -118,15 +136,19 @@ router.get('/search-codes', verifyToken, (req, res) => {
     return res.status(400).json({ error: 'Search query is required' });
   }
 
-  const searchQuery = `%${query}%`;
+  try {
+    const searchQuery = `%${query}%`;
+    const rows = await dbAsync.all(
+      'SELECT DISTINCT code, email, full_name FROM access_codes WHERE role = ? AND (code LIKE ? OR email LIKE ? OR full_name LIKE ?)',
+      ['viewer', searchQuery, searchQuery, searchQuery, searchQuery]
+    );
 
-  db.all('SELECT DISTINCT code, email, full_name FROM access_codes WHERE role = ? AND (code LIKE ? OR email LIKE ? OR full_name LIKE ?)', ['viewer', searchQuery, searchQuery, searchQuery], (err, rows) => {
-    if (err) {
-      console.error('Error searching for access codes:', err.message);
-      return res.status(500).json({ error: 'Failed to search for access codes' });
-    }
+    console.log(`[${requestId}] Found ${rows.length} matching access codes`);
     res.json({ results: rows });
-  });
+  } catch (error) {
+    console.error(`[${requestId}] Error searching for access codes:`, error);
+    res.status(500).json({ error: 'Failed to search for access codes' });
+  }
 });
 
 module.exports = router;
